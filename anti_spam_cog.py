@@ -1,0 +1,17 @@
+from discord.ext import commands
+
+
+class anti_spam_cog(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.bot_id = 831241901629243392
+        self.bot_channels = [972589111980458054]
+        self.bot_list_of_commands = ['!play', '!p', '!playing', '!pause', '!resume', '!skip', '!s', '!queue', '!q', '!history', '!h', '!played', '!past', '!clear', '!c', '!bin', '!leave', '!dc', '!disconnect', '!l', '!d', '!delete_queue', '!delq', '!dq', '!delete_history', '!delh', '!dh', '!loop', '!repeat']
+
+    @commands.Cog.listener('on_message')
+    async def delete_spam(self, message):
+        msg_channel = message.channel.id
+        msg = message.content
+        msg_author = message.author.id
+        if msg_channel in self.bot_channels and not any(bot_command in msg for bot_command in self.bot_list_of_commands) and msg_author != self.bot_id:
+            await message.delete()
