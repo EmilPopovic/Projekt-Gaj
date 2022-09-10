@@ -1,30 +1,44 @@
+import asyncio
 from discord.ext import commands
+from discord_components import ComponentsBot
 from help_cog import help_cog
-from music_cog_1 import music_cog
+from music_cog import music_cog
 from anti_spam_cog import anti_spam_cog
+from secrets import token
 
 
-bot = commands.Bot(command_prefix='!')
+bot = ComponentsBot(command_prefix='!')
 
 
 @bot.event
 async def on_ready():
-    print('\nBOT START\n')
+    print(f'\nLogged in as {bot.user}\nBOT START\n')
 
 
-def main():
+async def create_music_cog(bot, guild):
+    music_cog = music_cog(bot, guild)
+    await music_cog._init()
+    return music_cog
+
+
+async def main():
     '''Main je početak svega.'''
     bot.remove_command('help')
 
     bot.add_cog(help_cog(bot))
-    bot.add_cog(music_cog(bot))
+
+    print(bot.guilds)
+
+    guilds = [guild.id for guild in bot.guilds]
+    for guild in guilds:
+        m_cog = await create_music_cog(bot, guild)
+        bot.add_cog(m_cog)
+
     bot.add_cog(anti_spam_cog(bot))
 
-    with open('token.txt', 'r') as token:
-        TOKEN = token.read()
-
-    bot.run(TOKEN)
+    bot.run(token)
 
 
-if __name__ == '__main__':
-    main()
+if __name__ ==  '__main__':
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
