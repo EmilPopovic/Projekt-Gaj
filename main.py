@@ -38,6 +38,13 @@ def main():
     #bot.run(token)
     bot.start()
 
+async def exit_protocol():
+    """Izlazi sa svih servera na kojima se nalazi. Funkcija se ne koristi aktivno, već mora biti ručno pozvana u slučaju potrebe."""
+    guilds = [guild.id for guild in bot.guilds]
+    for guild in bot.guilds:
+        await guild.leave()
+        print(f'Izašao sam iz guilda {guild}')
+
 
 if __name__ ==  '__main__':
     main()
