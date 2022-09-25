@@ -1,12 +1,14 @@
-import asyncio
 import music_cog as mc
-from discord_components import ComponentsBot
+import interactions
+from discord.ext import commands
+#from discord_components import ComponentsBot
 from help_cog import help_cog
 from anti_spam_cog import anti_spam_cog
 from secrets import token
 
 
-bot = ComponentsBot(command_prefix='!')
+#bot = commands.Bot(command_prefix='!', intents=None)
+bot = interactions.Client(token=token)
 
 
 @bot.event
@@ -16,16 +18,13 @@ async def on_ready():
     
     bot.remove_command('help')
 
-    bot.add_cog(help_cog(bot))
-
     guilds = [guild.id for guild in bot.guilds]
     for guild in guilds:
-        print(guild)
+        if guild == 831909949436198992:
+            await create_music_cog(bot, guild)
 
-        m_cog = await create_music_cog(bot, guild)
-        bot.add_cog(m_cog)
-
-    bot.add_cog(anti_spam_cog(bot))
+        
+    #bot.add_cog(anti_spam_cog(bot))
 
 
 async def create_music_cog(bot, guild):
@@ -36,7 +35,8 @@ async def create_music_cog(bot, guild):
 
 def main():
     '''Main je početak svega.'''
-    bot.run(token)
+    #bot.run(token)
+    bot.start()
 
 
 if __name__ ==  '__main__':
