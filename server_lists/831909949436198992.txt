@@ -1,0 +1,10 @@
+>>>LIST 1<<<
+A
+B
+C
+>>>LIST 2<<<
+franz ferdinand glimpse of love
+vengo dalla luna caparezza
+bella ciao
+>>>LIST 3<<<
+F

@@ -1,49 +1,52 @@
 import music_cog as mc
-import interactions
+#import interactions
 from discord.ext import commands
-#from discord_components import ComponentsBot
 from help_cog import help_cog
 from anti_spam_cog import anti_spam_cog
 from secrets import token
 
+import sys
+import subprocess
+import discord
 
-#bot = commands.Bot(command_prefix='!', intents=None)
-bot = interactions.Client(token=token)
+from colors import *
+
+intents = discord.Intents(messages=True, guilds=True)
+bot = commands.Bot(command_prefix='!', intents=intents)
+#bot = interactions.Client(token=token)
 
 
 @bot.event
 async def on_ready():
-    print(f'\nLogged in as {bot.user}\nBOT START\n')
-    print(f'Bot user id: {bot.user.id}')
-    
+    print(f'\n{c_login()} as {bot.user}\nBot user id: {c_user(bot.user.id)}\n')
+
     bot.remove_command('help')
+    await bot.add_cog(anti_spam_cog(bot))
 
     guilds = [guild.id for guild in bot.guilds]
     for guild in guilds:
         if guild == 831909949436198992:
-            await create_music_cog(bot, guild)
-
-        
-    #bot.add_cog(anti_spam_cog(bot))
+            await add_guild(guild)
 
 
-async def create_music_cog(bot, guild):
-    music_cog = mc.music_cog(bot, guild)
-    await music_cog._init()
-    return music_cog
+async def add_guild(guild_id):
+    m_cog = await mc.create_music_cog(bot, guild_id)
+    await bot.add_cog(m_cog)
+    channel = m_cog.bot_channel_id
+    print(f'{c_time()} {c_event("ADDED GUILD")} {c_guild(guild_id)} with channel {c_channel(channel)}')
+
+
+def install_packages():
+    with open('requirements.txt', 'r') as packages:
+        for package in packages:
+            subprocess.check_call([sys.executable, '-m', 'pip', 'install', f'{package}'])
 
 
 def main():
     '''Main je početak svega.'''
-    #bot.run(token)
-    bot.start()
-
-async def exit_protocol():
-    """Izlazi sa svih servera na kojima se nalazi. Funkcija se ne koristi aktivno, već mora biti ručno pozvana u slučaju potrebe."""
-    guilds = [guild.id for guild in bot.guilds]
-    for guild in bot.guilds:
-        await guild.leave()
-        print(f'Izašao sam iz guilda {guild}')
+    #install_packages()
+    bot.run(token)
+    #bot.start()
 
 
 if __name__ ==  '__main__':

@@ -10,9 +10,17 @@ class GetSongs:
         self.link = link
 
 
-    def find_songs(self):        
-        playlist_id = self.link.split('playlist/')[1].split('?')[0]
-        query = 'https://api.spotify.com/v1/playlists/{}/tracks'.format(playlist_id)
+    def find_songs(self):
+        if 'playlist/' in self.link:
+            playlist_id = self.link.split('playlist/')[1].split('?')[0]
+            query = 'https://api.spotify.com/v1/playlists/{}/tracks'.format(playlist_id)
+        
+        elif 'album/' in self.link:
+            playlist_id = self.link.split('album/')[1].split('?')[0]
+            query = 'https://api.spotify.com/v1/albums/{}/tracks'.format(playlist_id)
+        
+        else:
+            return []
 
         response = requests.get(query, headers={'Content-Type': 'application/json', 'Authorization': 'Bearer {}'.format(self.spotify_token)})
 
@@ -21,10 +29,16 @@ class GetSongs:
         lista = []
 
         for i in response_json['items']:
-            data = i['track']
-            name = data['name']
-            artist = data['album']['artists'][0]['name']
-            lista.append(f'{name} {artist}')
+            if 'playlist/' in self.link:
+                data = i['track']
+                name = data['name']
+                artist = data['album']['artists'][0]['name']
+                lista.append(f'{name} {artist}')
+            
+            else:
+                name = i['name']
+                artist = i['artists'][0]['name']
+                lista.append(f'{name} {artist}')
 
         return lista
     

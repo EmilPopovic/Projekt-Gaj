@@ -1,26 +1,98 @@
-from ast import alias
-import discord, random, asyncio, os
+import discord, random, asyncio, os, sys
 from datetime import datetime
 from discord.ext import commands
 #from discord_components import Button, DiscordComponents, ButtonStyle, Select, SelectOption
 from youtube_dl import YoutubeDL
 from spotify import GetSongs
+from colors import *
 
 
-def get_id(guild):
+from tempfile import mkstemp
+from shutil import move, copymode
+from os import fdopen, remove
+
+
+async def create_music_cog(bot, guild):
+    m_cog = Music_cog(bot, guild)
+    await m_cog._init()
+    return m_cog
+
+
+def replace(file_path, pattern, subst):
+    #Create temp file
+    fh, abs_path = mkstemp()
+    with fdopen(fh,'w') as new_file:
+        with open(file_path) as old_file:
+            for line in old_file:
+                new_file.write(line.replace(pattern, subst))
+    #Copy the file permissions from the old file to the new file
+    copymode(file_path, abs_path)
+    #Remove original file
+    remove(file_path)
+    #Move new file
+    move(abs_path, file_path)
+
+
+async def replace_command_channel(guild, id):
+    channel = await guild.create_text_channel('song-requests')
+    channel_id = channel.id
+
+    print(f'{c_time()} Command channel deleted, {c_event("CREATED CHANNEL")} {c_channel(channel_id)}')
+
+    pattern = f'{id}'
+    subst = f'{channel_id}'
+
+    return {'pattern': pattern, 'subst': subst, 'id': channel_id}
+
+
+
+async def get_id(guild):
+    replaced = False
+    guild_id = guild.id
     with open('channel_ids.txt') as f:
         for line in f:
+            # every line is a pair of {guild id} {channel id}
             r = line.split()
-            if int(r[0]) == guild:
+            if int(r[0]) == guild_id:
                 id = int(r[1])
+
+                # check if channel still exists
+                guild_channels = [channel.id for channel in guild.text_channels]
+
+                if id not in guild_channels:
+                    replaced_info = await replace_command_channel(guild, id)
+                    # info to replace old channel id
+                    pattern = replaced_info['pattern']
+                    subst = replaced_info['subst']
+                    # new id
+                    id = replaced_info['id']
+
+                    replaced = True
+                    created = True
+                
+                else:
+                    created = False
+
                 break
         
         else:
             ## existing channel was not found
             ## has to create new channel
-            return
-        
-        return id
+            channel = await guild.create_text_channel('song-requests')
+            id = channel.id
+            created = True
+
+            with open('channel_ids.txt', 'a') as f:
+                f.write(f'{guild_id} {id}\n')
+
+            print(f'{c_time()} {c_event("CREATED CHANNEL")} {c_channel(id)}')
+
+        f.close()
+
+        if replaced:
+            replace("channel_ids.txt", pattern, subst)
+
+        return {'channel_id': id, 'created': created}
 
 
 def create_server_playlist(id):
@@ -90,13 +162,13 @@ class Buttons(discord.ui.View):
     #    await interaction.response.edit_message(view=self)
 
 
-class music_cog(commands.Cog):
+class Music_cog(commands.Cog):
     ## function runs on bot start
     def __init__(self, bot, guild):
         self.bot = bot
 
         self.guild = guild
-        self.bot_channel_id = get_id(guild)
+        #self.bot_channel_id = await get_id(self.bot.get_guild(guild))
         
         ## defauld bot states
         self.is_playing = False
@@ -151,8 +223,11 @@ class music_cog(commands.Cog):
 
     ## async part of __init__
     async def _init(self):
+        guild_obj = self.bot.get_guild(self.guild)
+        bot_channel_id_return = await get_id(guild_obj)
+        self.bot_channel_id = bot_channel_id_return['channel_id']
+
         #clear command channel on start
-        print(self.bot_channel_id)
         await self.bot.get_channel(self.bot_channel_id).purge(limit=1)
 
         # start and update new live message
@@ -167,56 +242,6 @@ class music_cog(commands.Cog):
         channel = self.bot.get_channel(self.bot_channel_id)
         #await channel.send('Pozdrav brate!', view=Buttons())
         await edit_msg.edit(content='Pozdrav Brate', view=Buttons())
-
-    
-    class Buttons(discord.ui.View):
-        def __init__(self, *, timeout=180):
-            super().__init__(timeout=timeout)
-
-        ## first row
-
-        @discord.ui.button(label="shuffle", style=discord.ButtonStyle.blurple, row=0) # or .primary
-        async def shuffle_btn(self, interaction:discord.Interaction, button:discord.ui.Button):
-            await interaction.response.edit_message(view=self)
-
-        @discord.ui.button(label="previous", style=discord.ButtonStyle.blurple, row=0) # or .secondary/.grey
-        async def previous_btn(self, interaction:discord.Interaction, button:discord.ui.Button):
-            await interaction.response.edit_message(view=self)
-
-        @discord.ui.button(label="pause", style=discord.ButtonStyle.blurple, row=0) # or .success
-        async def pause_btn(self, interaction:discord.Interaction, button:discord.ui.Button):
-            super.pause()
-            await interaction.response.edit_message(view=self)
-
-        @discord.ui.button(label="skip", style=discord.ButtonStyle.blurple, row=0) # or .danger
-        async def skip_btn(self, interaction:discord.Interaction, button:discord.ui.Button):
-            await interaction.response.edit_message(view=self)
-
-        @discord.ui.button(label="loop", style=discord.ButtonStyle.blurple, row=0) # or .danger
-        async def loop_btn(self, interaction:discord.Interaction, button:discord.ui.Button):
-            await interaction.response.edit_message(view=self)
-
-        ## second row
-
-        @discord.ui.button(label="clear", style=discord.ButtonStyle.blurple, row=1) # or .primary
-        async def clear_btn(self, interaction:discord.Interaction, button:discord.ui.Button):
-            await interaction.response.edit_message(view=self)
-
-        @discord.ui.button(label="dc", style=discord.ButtonStyle.blurple, row=1) # or .secondary/.grey
-        async def dc_btn(self, interaction:discord.Interaction, button:discord.ui.Button):
-            await interaction.response.edit_message(view=self)
-
-        @discord.ui.button(label="list", style=discord.ButtonStyle.blurple, row=1) # or .success
-        async def list_btn(self, interaction:discord.Interaction, button:discord.ui.Button):
-            await interaction.response.edit_message(view=self)
-
-        @discord.ui.button(label="queue", style=discord.ButtonStyle.blurple, row=1) # or .danger
-        async def queue_btn(self, interaction:discord.Interaction, button:discord.ui.Button):
-            await interaction.response.edit_message(view=self)
-
-        @discord.ui.button(label="history", style=discord.ButtonStyle.blurple, row=1) # or .danger
-        async def history_btn(self, interaction:discord.Interaction, button:discord.ui.Button):
-            await interaction.response.edit_message(view=self)
 
 
     #async def update_msg(self):
@@ -793,17 +818,17 @@ class music_cog(commands.Cog):
                         await self.play_music(ctx)
 
 
-    #@commands.command(name="play", aliases=["p","playing",'P'], help="Plays a selected song from youtube")
-    #async def play(self, ctx, *args):
-    #    query = " ".join(args)
-    #    print(query)
-    #    await self.add_to_queue(ctx=ctx, query=query, call_id=0)
+    @commands.command(name="play", aliases=["p","playing",'P'], help="Plays a selected song from youtube")
+    async def play(self, ctx, *args):
+        query = " ".join(args)
+        print(query)
+        await self.add_to_queue(ctx=ctx, query=query, call_id=0)
 
     
-    @self.bot.command(name='p')
-    async def play(self, interaction: discord.Interaction):
+    #@self.bot.command(name='p')
+    #async def play(self, interaction: discord.Interaction):
 
-        await interaction.response.send_message('Ovo je komanda!!!')
+    #    await interaction.response.send_message('Ovo je komanda!!!')
 
 
     @commands.command(name='swap', aliases=['s'], help='swaps songs in queue with selected numbers')
