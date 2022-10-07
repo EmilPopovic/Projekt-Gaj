@@ -1,24 +1,27 @@
-import discord, random, asyncio, os, sys
+from time import time
+import discord, random, asyncio, os
 from datetime import datetime
 from discord.ext import commands
+from discord import app_commands
 #from discord_components import Button, DiscordComponents, ButtonStyle, Select, SelectOption
 from youtube_dl import YoutubeDL
-from spotify import GetSongs
+from spotify import GetSpotifySongs
 from colors import *
-
-
 from tempfile import mkstemp
 from shutil import move, copymode
 from os import fdopen, remove
 
 
 async def create_music_cog(bot, guild):
-    m_cog = Music_cog(bot, guild)
+    m_cog = MusicCog(bot, guild)
     await m_cog._init()
     return m_cog
 
 
-def replace(file_path, pattern, subst):
+def replace(file_path: str, pattern: str, subst: str) -> None:
+    """
+    In a text file, replaces pattern with subst.
+    """
     #Create temp file
     fh, abs_path = mkstemp()
     with fdopen(fh,'w') as new_file:
@@ -33,7 +36,7 @@ def replace(file_path, pattern, subst):
     move(abs_path, file_path)
 
 
-async def replace_command_channel(guild, id):
+async def replace_command_channel(guild, id) -> dict:
     channel = await guild.create_text_channel('song-requests')
     channel_id = channel.id
 
@@ -43,7 +46,6 @@ async def replace_command_channel(guild, id):
     subst = f'{channel_id}'
 
     return {'pattern': pattern, 'subst': subst, 'id': channel_id}
-
 
 
 async def get_id(guild):
@@ -162,13 +164,12 @@ class Buttons(discord.ui.View):
     #    await interaction.response.edit_message(view=self)
 
 
-class Music_cog(commands.Cog):
+class MusicCog(commands.Cog):
     ## function runs on bot start
     def __init__(self, bot, guild):
         self.bot = bot
 
         self.guild = guild
-        #self.bot_channel_id = await get_id(self.bot.get_guild(guild))
         
         ## defauld bot states
         self.is_playing = False
@@ -216,6 +217,10 @@ class Music_cog(commands.Cog):
             'options': '-vn'
             }
 
+        self.spotify_links = ['https://open.spotify.com/playlist/', 'https://open.spotify.com/album/']
+
+        self.add_limit = 30
+
         ## initiate voice
         self.vc = None
 
@@ -239,8 +244,30 @@ class Music_cog(commands.Cog):
 
     async def update_msg(self):
         edit_msg = self.on_ready_message
-        channel = self.bot.get_channel(self.bot_channel_id)
-        #await channel.send('Pozdrav brate!', view=Buttons())
+        
+        # message content
+        content = ''
+
+        new_history = self.music_history[:-1] if self.is_playing else self.music_history
+
+        if new_history and self.show_history:
+            content += '**History:**\n'
+
+            for i in range(len(new_history)):
+                content += f'{i+1} {new_history[i][0]["title"]}\n'
+
+            if self.music_queue:
+                content += '\n'
+
+
+        if self.music_queue:
+            content += '**Queue:**\n'
+
+            for i in range(len(self.music_queue) - 1, -1, -1):
+                if self.short_queue and i < 5 or not self.short_queue:
+                    content += f'{i+1} {self.music_queue[i][0]["title"]}\n'
+                    
+
         await edit_msg.edit(content='Pozdrav Brate', view=Buttons())
 
 
@@ -681,7 +708,7 @@ class Music_cog(commands.Cog):
             return
 
 
-    async def play_music(self, ctx):
+    async def play_music(self):
         loop = asyncio.get_event_loop()
         if len(self.music_queue) > 0:
             self.is_playing = True
@@ -694,9 +721,6 @@ class Music_cog(commands.Cog):
 
                 #in case we fail to connect
                 if self.vc == None:
-                    await ctx.send("Ne mogu se spojiti u kanal")
-                    await asyncio.sleep(1)
-                    await ctx.channel.purge(limit=1)
                     return
             else:
                 await self.vc.move_to(self.music_queue[0][1])
@@ -709,126 +733,50 @@ class Music_cog(commands.Cog):
 
             self.music_queue.pop(0)
 
-            _msg_update = await self.edit_live_msg()
+            _msg_update = await self.update_msg()
 
             self.vc.play(discord.FFmpegPCMAudio(m_url, **self.FFMPEG_OPTIONS), after=lambda e: loop.create_task(self.done_playing()))
 
         else:
             self.currently_playing = []
             self.is_playing = False
-            _msg_update = await self.edit_live_msg()
+            _msg_update = await self.update_msg()
             return
 
-        
-    def loading_bar(self, current, total):
-        percentage = current / total * 100
-        n_of_tiles = int(percentage // 10)
-        loading_bar_str = ('▮' * n_of_tiles) + ('▯' * (10 - n_of_tiles))
-        return loading_bar_str
-
     
-    async def add_to_queue(self, ctx, query, call_id):
-        if 'https://open.spotify.com/playlist/' in query or 'https://open.spotify.com/album/' in query:
-            print(f'Podijeljena je playlista/album:\nlink: {query}')
-            await ctx.channel.purge(limit=1)
-            
-            get_songs = GetSongs(link=query)
-            lista = get_songs.call_refresh()
-            random.shuffle(lista)
-            lista = lista[:30]
+    async def add_to_queue(self, query, vc):
+        self.is_downloading = True
+        await self.update_msg()
+        # if query contains a spotify link
+        if any(link in query for link in self.spotify_links):
+            get_songs = GetSpotifySongs(link=query)
+            added_songs = get_songs.call_refresh()[:self.add_limit]
 
-            voice_channel = ctx.author.voice.channel
-
-            if voice_channel is None:
-                #you need to be connected so that the bot knows where to go
-                await ctx.send("Connect to a voice channel!")
-                await asyncio.sleep(1)
-                await ctx.channel.purge(limit=1)
-
-            elif self.is_paused:
-                        self.is_playing = True
-                        self.is_paused = False
-                        self.vc.resume()
-
-            else:
-                msg = await ctx.send(f"```Adding songs: ▯▯▯▯▯▯▯▯▯▯ 0 / {len(lista)}```")
-
-                self.is_downloading = True
-                await self.edit_live_msg()
-
-                for i in range(len(lista)):
-                    
-                    await msg.edit(content=f"```Adding songs: {self.loading_bar(i+1, len(lista))} {i+1} / {len(lista)}```")
-
-                    pjesma = lista[i]
-                    song = self.search_yt(pjesma)
-                    
-                    if type(song) == type(True):
-                        await ctx.send("Ne mogu skinuti pjesmu.")
-                        await asyncio.sleep(1)
-                        await ctx.channel.purge(limit=1)
-                    else:
-                        self.music_queue.append([song, voice_channel])
-
-                        if self.is_shuffled:
-                            self.music_queue_no_shuffle.append([song, voice_channel])
-
-                        if not self.is_playing:
-                            await self.play_music(ctx)
-                    
-                    await self.edit_live_msg()
-
-                self.is_downloading = False
-                await self.edit_live_msg()
-
-            await msg.edit(content='```Songs added!```')
-            await asyncio.sleep(1)
-            await ctx.channel.purge(limit=1)
-
-        else:
-            voice_channel = ctx.author.voice.channel
-            
-            if voice_channel is None:
-                #you need to be connected so that the bot knows where to go
-                await ctx.send("Spoji se u kanal!")
-                await asyncio.sleep(1)
-                await ctx.channel.purge(limit=2)
-            
-            elif self.is_paused:
-                self.is_playing = True
-                self.is_paused = False
-                self.vc.resume()
-            
-            else:
-                song = self.search_yt(query)
+            for i in range(len(added_songs)):
+                song = self.search_yt(added_songs[i])
                 if type(song) == type(True):
-                    await ctx.send("Ne mogu skinuti pjesmu.")
-                    await asyncio.sleep(1)
-                    await ctx.channel.purge(limit=2)
+                    # if we fail to find the song
+                    print(f'{c_time()} {c_err()} failed to add song {added_songs[i]}')
                 else:
-                    await ctx.channel.purge(limit=1)
-                    
-                    self.music_queue.append([song, voice_channel])
+                    self.music_queue.append([song, vc])
                     if self.is_shuffled:
-                        self.music_queue_no_shuffle.append([song, voice_channel])
-                    
-                    await self.edit_live_msg()
-                    
-                    if self.is_playing == False:
-                        await self.play_music(ctx)
+                        self.music_queue_no_shuffle.append([song, vc])
+                    if not self.is_playing:
+                        await self.play_music()
 
+        else: 
+            song = self.search_yt(query)
+            if type(song) == type(True):
+                print(f'{c_time()} {c_err()} failed to add song {query}')
+            else:
+                self.music_queue.append([song, vc])
+                if self.is_shuffled:
+                    self.music_queue_no_shuffle.append([song, vc])
+                if self.is_playing == False:
+                    await self.play_music()
 
-    @commands.command(name="play", aliases=["p","playing",'P'], help="Plays a selected song from youtube")
-    async def play(self, ctx, *args):
-        query = " ".join(args)
-        print(query)
-        await self.add_to_queue(ctx=ctx, query=query, call_id=0)
-
-    
-    #@self.bot.command(name='p')
-    #async def play(self, interaction: discord.Interaction):
-
-    #    await interaction.response.send_message('Ovo je komanda!!!')
+        self.is_downloading = False
+        self.update_msg()
 
 
     @commands.command(name='swap', aliases=['s'], help='swaps songs in queue with selected numbers')
@@ -868,4 +816,4 @@ class Music_cog(commands.Cog):
             return
 
 
-        await self.edit_live_msg()
+        await self.update_msg()

@@ -45,3 +45,6 @@ def c_event(event: str):
 
 def c_user(user: int):
     return f'{Colors.CYAN}{user}{Colors.END}'
+
+def c_err():
+    return f'{Colors.RED}{"ERROR"}{Colors.END}'
