@@ -3,7 +3,7 @@ from secrets import spotify_user_id
 from refresh import Refresh
 
 
-class GetSongs:
+class GetSpotifySongs:
     def __init__(self, link):
         self.user_id = spotify_user_id
         self.spotify_token = ''

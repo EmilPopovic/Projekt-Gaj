@@ -1,7 +1,10 @@
 # cog files
-import music_cog as mc
-from help_cog import help_cog
-from anti_spam_cog import anti_spam_cog
+from ast import Delete
+from email import message
+from http.client import HTTPException
+import cogs.music_cog as mc
+from cogs.help_cog import help_cog
+from cogs.anti_spam_cog import anti_spam_cog
 
 # discord api
 import discord
@@ -19,20 +22,20 @@ import subprocess
 from colors import *
 
 
-bot = commands.Bot(command_prefix='!', intents=discord.Intents.all())
+bot = commands.Bot(command_prefix = '!', intents = discord.Intents.all())
 
 global music_cogs
 music_cogs = {}
 
 @bot.event
-async def on_ready():
+async def on_ready() -> None:
     """
     Runs on bot login.
     Syncs slash commands.
     Creates MusicCog objects for every guild.
     """
-    print(f'\n{c_login()} as {bot.user}\nBot user id: {c_user(bot.user.id)}\n')
-
+    # sync commands
+    print(f'{c_time()} {c_event("SYNCING COMMANDS")}')
     try:
         synced = await bot.tree.sync()
         print(f'{c_time()} {c_event("SYNCED")} {len(synced)} command(s)')
@@ -42,11 +45,22 @@ async def on_ready():
     bot.remove_command('help')
     await bot.add_cog(anti_spam_cog(bot))
 
-    for guild in [guild.id for guild in bot.guilds]:
+    # create music cog for every guild bot is in
+    guilds = [guild.id for guild in bot.guilds]
+    for guild in guilds:
         music_cogs[guild] = await add_guild(guild)
+        # sync commands
+        # TODO: move syncing to add_guild() function
+        #try:
+        #    await bot.tree.sync(guild = discord.Object(id=guild))
+        #    print(f'{c_time()} {c_event("SYNCED")} commands in guild {c_guild(guild)}')
+        #except:
+        #    print(f'{c_time()} {c_err()} failed syncing commands in guild {c_guild(guild)}')
+
+    print(f'\n{c_login()} as {bot.user}\nBot user id: {c_user(bot.user.id)}\n')
 
 
-async def add_guild(guild_id):
+async def add_guild(guild_id: int) -> mc.MusicCog:
     """
     Creates a MusicCog object for specific guild.
     """
@@ -56,22 +70,68 @@ async def add_guild(guild_id):
     return m_cog
 
 
-@bot.tree.command(name='p')
-@app_commands.describe(query='song name')
-async def p(ctx, interaction: discord.Interaction, query: str):
+@bot.tree.command(name = 'play', description = 'Adds a song/list to queue.')
+@app_commands.describe(song = 'The name or link of song/list.')
+async def play(interaction: discord.Interaction, song: str) -> None:
     """
     If user calling the command is in a voice channel, adds wanted song/list to queue of that guild.
     """
-    vc = ctx.author.voice.channel
+    vc = interaction.user.voice.channel
     # if user is not in a voice channel
     if vc is None:
-        await interaction.response.send_message('Connect to a voice channel to play songs!', ephemeral=True)
+        await interaction.response.send_message('Connect to a voice channel to play songs!', ephemeral = True)
     # if user is in a voice channel
     else:
-        await music_cogs[ctx.guild.id].add_to_queue(query, vc)
+        # TODO: send empty response
+        await interaction.response.send_message('Adding song.', ephemeral = True)
+        cog = music_cogs[interaction.guild.id]
+        await cog.add_to_queue(song, vc)
 
 
-def install_packages():
+@bot.tree.command(name = 'swap', description = 'Swap places of two queued songs.')
+@app_commands.describe(song1 = 'Place of first song in queue.', song2 = 'Place of second song in the queue.')
+async def swap(interaction: discord.Interaction, song1: int, song2: int) -> None:
+    """
+    Swaps places of two songs in the queue.
+    Numbering of arguments starts with 1, 0 referes to the currently playing song.
+    Indexes starting with 0 are passed to swap method of music cog.
+    """
+    # starting with guard clauses
+    # both inputs must be numbers
+    if not (song1.isnumeric() and song2.isnumeric()):
+        await interaction.response.send_message('Number was not given as input.', ephemeral = True)
+        return
+    
+    # convert to int if both inputs are numeric
+    i, j = int(song1) - 1, int(song2) - 1
+    # swapping only if different indexes selected
+    if i == j:
+        await interaction.response.send_message('List indexes must be different.', ephemeral = True)
+        return
+    
+    # checking if inputs are valid numbers
+    # inputs are valid if both exist in queue
+    cog = music_cogs[interaction.guild.id]
+    queue_len = cog.get_queue_len()
+    
+    if i >= queue_len or j >= queue_len:
+        await interaction.response.send_message('Specified indexes not in list.', ephemeral = True)
+        return
+
+    # swap if guard clauses passed
+    await cog.swap(i, j)
+
+
+@bot.tree.command(name = 'pause', description = 'Pauses or unpauses playing.')
+async def pause(interaction: discord.Interaction):
+    """
+    Pauses if playing, unpauses if paused.
+    """
+    cog = music_cogs[interaction.guild.id]
+    await cog.pause()
+
+
+def install_packages() -> None:
     """
     Installs all packages listed in requirements.txt file.
     """
@@ -80,7 +140,7 @@ def install_packages():
             subprocess.check_call([sys.executable, '-m', 'pip', 'install', f'{package}'])
 
 
-def main():
+def main() -> None:
     """
     Main is the beginning of everything.
     """
