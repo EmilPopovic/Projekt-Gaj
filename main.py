@@ -1,22 +1,15 @@
-# cog files
-import cogs.music_cog as mc
-from cogs.help_cog import HelpCog
-from cogs.anti_spam_cog import anti_spam_cog
+import subprocess
+import sys
+from typing import Dict, Any
 
-# discord api
 import discord
 from discord import app_commands
 from discord.ext import commands
 
-# tokens
-from secrets import token
-
-# package installation
-import sys
-import subprocess
-
-# color coded terminal text
+import cogs.music_cog as mc
+from cogs.anti_spam_cog import anti_spam_cog
 from colors import *
+from secrets import token
 
 bot = commands.Bot(command_prefix='!', intents=discord.Intents.all())
 
@@ -36,6 +29,7 @@ async def on_ready() -> None:
     try:
         synced = await bot.tree.sync()
         print(f'{c_time()} {c_event("SYNCED")} {len(synced)} command(s)')
+    # TODO: add specific exception
     except:
         print(f'{c_time()} {c_err()} failed to sync command(s)')
 
@@ -43,9 +37,8 @@ async def on_ready() -> None:
     await bot.add_cog(anti_spam_cog(bot))
 
     # create music cog for every guild bot is in
-    guilds = [guild.id for guild in bot.guilds]
-    for guild in guilds:
-        music_cogs[guild] = await add_guild(guild)
+    for guild in bot.guilds:
+        music_cogs[guild.id] = await add_guild(guild)
         # sync commands
         # TODO: move syncing to add_guild() function
         # try:
@@ -90,7 +83,7 @@ async def play(interaction: discord.Interaction, song: str) -> None:
 async def swap(interaction: discord.Interaction, song1: int, song2: int) -> None:
     """
     Swaps places of two songs in the queue.
-    Numbering of arguments starts with 1, 0 referes to the currently playing song.
+    Numbering of arguments starts with 1, 0 refers to the currently playing song.
     Indexes starting with 0 are passed to swap method of music cog.
     """
     # starting with guard clauses
