@@ -1,6 +1,5 @@
 import subprocess
 import sys
-from typing import Dict, Any
 
 import discord
 from discord import app_commands
