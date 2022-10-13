@@ -42,7 +42,7 @@ class MusicCog(commands.Cog):
         self.is_shuffled = False
         self.is_downloading = False
         self.short_queue = False
-        self.show_history = False
+        self.show_history = True
         self.was_long_queue = False
 
         self.p_index = 0  # Index which operates all aspects of the music queue
@@ -121,7 +121,8 @@ class MusicCog(commands.Cog):
         # message content
         content = ''
 
-        new_history = self.music_queue[:self.p_index].reverse()
+        new_history = self.music_queue[:self.p_index]
+        new_history.reverse()
 
         if self.show_history:
             content += '**History:**\n'
@@ -339,7 +340,7 @@ class MusicCog(commands.Cog):
 
     async def play_next(self):
         loop = asyncio.get_event_loop()
-        if len(self.music_queue) > self.p_index + 1:
+        if len(self.music_queue) > self.p_index:
             self.is_playing = True
 
             #self.music_history.append(self.music_queue[0])
@@ -371,7 +372,7 @@ class MusicCog(commands.Cog):
 
     async def play_music(self):
         loop = asyncio.get_event_loop()
-        if len(self.music_queue) > self.p_index + 1:
+        if len(self.music_queue) > self.p_index:
             self.is_playing = True
 
             m_url = self.music_queue[self.p_index][0]['source']  #music_queue[index][vc]
