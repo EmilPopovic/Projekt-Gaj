@@ -119,6 +119,11 @@ async def pause(interaction: discord.Interaction):
     cog = music_cogs[interaction.guild.id]
     await cog.pause()
 
+@bot.tree.command(name='history', description='Adds a song/list to queue.')
+async def history(interaction: discord.Interaction) -> None:
+    await interaction.response.send_message('', ephemeral=True)
+
+
 
 def install_packages() -> None:
     """
