@@ -138,7 +138,7 @@ class MusicCog(commands.Cog):
 
             for i in range(len(self.music_queue) - 1, self.p_index, -1):   
                 if self.short_queue and (i - self.p_index) < 5 or not self.short_queue:
-                    content += f'{i} {self.music_queue[i + self.p_index][0]["title"]}\n'
+                    content += f'{i - self.p_index} {self.music_queue[i][0]["title"]}\n'
 
         # embed
         embed = discord.Embed(title = 'Welcome to Shteff!',
