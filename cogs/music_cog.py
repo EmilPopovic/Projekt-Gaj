@@ -136,11 +136,35 @@ class MusicCog(commands.Cog):
         if self.music_queue[self.p_index + 1:]:
             content += '**Queue:**\n'
 
-            for i in range(len(self.music_queue[self.p_index + 1:]) - 1, -1, -1):
-                if self.short_queue and i < 5 or not self.short_queue:
-                    content += f'{i + 1} {self.music_queue[i][0]["title"]}\n'
+            for i in range(len(self.music_queue) - 1, self.p_index, -1):   
+                if self.short_queue and (i - self.p_index) < 5 or not self.short_queue:
+                    content += f'{i} {self.music_queue[i + self.p_index][0]["title"]}\n'
 
-        await edit_msg.edit(content = content, view = Buttons(cog = self))
+        # embed
+        embed = discord.Embed(title = 'Welcome to Shteff!',
+                              description = 'Use /play to add more songs to queue.',
+                              color = 0xf1c40f)
+        view = None
+
+        if self.music_queue[self.p_index:]:
+            title = self.music_queue[self.p_index][0]['title']
+
+            yt_id = self.music_queue[self.p_index][0]['id']
+            url = f'https://www.youtube.com/watch?v={yt_id}'
+
+            thumbnail_source = f'https://img.youtube.com/vi/{yt_id}/0.jpg'
+
+            embed.add_field(name = 'Currently playing:',
+                            value = f'[{title}]({url})',
+                            inline = False)
+
+            embed.set_thumbnail(url = thumbnail_source)
+
+            view = Buttons()
+
+        await edit_msg.edit(content = content, embed = embed, view = view)
+
+        
 
     # async def update_msg(self):
     #    edit_msg = self.on_ready_message
@@ -408,7 +432,7 @@ class MusicCog(commands.Cog):
 
     async def add_to_queue(self, query, vc):
         self.is_downloading = True
-        await self.update_msg()
+        await self.update_msg()    # Disables buttons
         # if query contains a spotify link
         if any(link in query for link in self.spotify_links):
             get_songs = GetSpotifySongs(link = query)
@@ -468,7 +492,7 @@ class MusicCog(commands.Cog):
 
 
 class Buttons(discord.ui.View):
-    def __init__(self, cog, timeout=180):
+    def __init__(self, timeout=180):
         super().__init__(timeout = timeout)
 
     # first row

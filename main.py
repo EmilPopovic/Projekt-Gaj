@@ -76,6 +76,14 @@ async def play(interaction: discord.Interaction, song: str) -> None:
         cog = music_cogs[interaction.guild.id]
         await cog.add_to_queue(song, vc)
 
+@bot.tree.command(name = 'skip', description = 'Skips currently playing song and plays next in queue.')
+async def skip(interaction: discord.Interaction):
+    """
+    Skips to next song in queue.
+    """
+    cog = music_cogs[interaction.guild.id]
+    await cog.skip()
+
 
 @bot.tree.command(name='swap', description='Swap places of two queued songs.')
 @app_commands.describe(song1='Place of first song in queue.', song2='Place of second song in the queue.')
@@ -87,12 +95,9 @@ async def swap(interaction: discord.Interaction, song1: int, song2: int) -> None
     """
     # starting with guard clauses
     # both inputs must be numbers
-    if not song1.isnumeric() or not song2.isnumeric():
-        await interaction.response.send_message('Number was not given as input.', ephemeral=True)
-        return
 
     # convert to int if both inputs are numeric
-    i, j = int(song1) - 1, int(song2) - 1
+    i, j = song1 - 1, song2 - 1
     # swapping only if different indexes selected
     if i == j:
         await interaction.response.send_message('List indexes must be different.', ephemeral=True)
