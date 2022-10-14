@@ -42,13 +42,15 @@ class MusicCog(commands.Cog):
         self.is_shuffled = False
         self.is_downloading = False
         self.short_queue = False
-        self.show_history = False
+        self.show_history = True
         self.was_long_queue = False
+
+        self.p_index = 0  # Index which operates all aspects of the music queue
 
         # song lists
         self.music_queue = []
-        self.music_queue_no_shuffle = []
-        self.music_history = []
+        #self.music_queue_no_shuffle = []
+        #self.music_history = []
         self.currently_playing = []
 
         # id of command message
@@ -119,25 +121,50 @@ class MusicCog(commands.Cog):
         # message content
         content = ''
 
-        new_history = self.music_history[:-1] if self.is_playing else self.music_history
+        new_history = self.music_queue[:self.p_index]
+        new_history.reverse()
 
-        if new_history and self.show_history:
+        if self.show_history:
             content += '**History:**\n'
 
             for i in range(len(new_history)):
                 content += f'{i + 1} {new_history[i][0]["title"]}\n'
 
-            if self.music_queue:
+            if self.music_queue[self.p_index + 1:]:
                 content += '\n'
 
-        if self.music_queue:
+        if self.music_queue[self.p_index + 1:]:
             content += '**Queue:**\n'
 
-            for i in range(len(self.music_queue) - 1, -1, -1):
-                if self.short_queue and i < 5 or not self.short_queue:
-                    content += f'{i + 1} {self.music_queue[i][0]["title"]}\n'
+            for i in range(len(self.music_queue) - 1, self.p_index, -1):   
+                if self.short_queue and (i - self.p_index) < 5 or not self.short_queue:
+                    content += f'{i - self.p_index} {self.music_queue[i][0]["title"]}\n'
 
-        await edit_msg.edit(content = 'Pozdrav Brate', view = Buttons(cog = self))
+        # embed
+        embed = discord.Embed(title = 'Welcome to Shteff!',
+                              description = 'Use /play to add more songs to queue.',
+                              color = 0xf1c40f)
+        view = None
+
+        if self.music_queue[self.p_index:]:
+            title = self.music_queue[self.p_index][0]['title']
+
+            yt_id = self.music_queue[self.p_index][0]['id']
+            url = f'https://www.youtube.com/watch?v={yt_id}'
+
+            thumbnail_source = f'https://img.youtube.com/vi/{yt_id}/0.jpg'
+
+            embed.add_field(name = 'Currently playing:',
+                            value = f'[{title}]({url})',
+                            inline = False)
+
+            embed.set_thumbnail(url = thumbnail_source)
+
+            view = Buttons()
+
+        await edit_msg.edit(content = content, embed = embed, view = view)
+
+        
 
     # async def update_msg(self):
     #    edit_msg = self.on_ready_message
@@ -337,20 +364,24 @@ class MusicCog(commands.Cog):
 
     async def play_next(self):
         loop = asyncio.get_event_loop()
-        if len(self.music_queue) > 0:
+        if len(self.music_queue) > self.p_index:
             self.is_playing = True
 
-            m_url = self.music_queue[0][0]['source']
-
-            self.music_history.append(self.music_queue[0])
-            self.currently_playing = self.music_queue[0]
+            #self.music_history.append(self.music_queue[0])
 
             if self.is_looped:
-                self.music_queue.append(self.currently_playing)
-            elif self.is_looped_single:
-                self.music_queue = [self.currently_playing] + self.music_queue
+                if self.p_index == len(self.music_queue) - 1:
+                    self.p_index = 0
+            
+            elif self.is_looped_single:     # The Index doesn't change, remaining in the same position
+                pass
+            
+            else:
+                self.p_index += 1
+            
+            m_url = self.music_queue[self.p_index][0]['source']
+            self.currently_playing = self.music_queue[self.p_index]
 
-            self.music_queue.pop(0)
 
             _msg_update = await self.update_msg()
 
@@ -365,14 +396,14 @@ class MusicCog(commands.Cog):
 
     async def play_music(self):
         loop = asyncio.get_event_loop()
-        if len(self.music_queue) > 0:
+        if len(self.music_queue) > self.p_index:
             self.is_playing = True
 
-            m_url = self.music_queue[0][0]['source']
+            m_url = self.music_queue[self.p_index][0]['source']  #music_queue[index][vc]
 
             # try to connect to voice channel if you are not already connected
             if self.vc is None or not self.vc.is_connected():
-                self.vc = await self.music_queue[0][1].connect()
+                self.vc = await self.music_queue[self.p_index][1].connect()
 
                 # in case we fail to connect
                 if self.vc is None:
@@ -380,13 +411,13 @@ class MusicCog(commands.Cog):
             else:
                 await self.vc.move_to(self.music_queue[0][1])
 
-            self.music_history.append(self.music_queue[0])
-            self.currently_playing = self.music_queue[-1]
+            #self.music_history.append(self.music_queue[0])
+            self.currently_playing = self.music_queue[self.p_index]
 
             if self.is_looped:
-                self.music_queue.append(self.currently_playing)
+                if self.p_index == len(self.music_queue) - 1:
+                    self.p_index = 0
 
-            self.music_queue.pop(0)
 
             _msg_update = await self.update_msg()
 
@@ -401,7 +432,7 @@ class MusicCog(commands.Cog):
 
     async def add_to_queue(self, query, vc):
         self.is_downloading = True
-        await self.update_msg()
+        await self.update_msg()    # Disables buttons
         # if query contains a spotify link
         if any(link in query for link in self.spotify_links):
             get_songs = GetSpotifySongs(link = query)
@@ -457,12 +488,11 @@ class MusicCog(commands.Cog):
         """
         Returns number of songs in queue.
         """
-        # TODO: replace when using one list for queue, current and history
-        return len(self.music_queue)
+        return len(self.music_queue[self.p_index:])
 
 
 class Buttons(discord.ui.View):
-    def __init__(self, cog, timeout=180):
+    def __init__(self, timeout=180):
         super().__init__(timeout = timeout)
 
     # first row
