@@ -7,4 +7,3 @@ youtube-dl>=2021.12.17
 numpy>=1.23.1
 Pillow>=9.3.0
 colorthief>=0.2.1
-lavalink
