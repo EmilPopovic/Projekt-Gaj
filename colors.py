@@ -1,5 +1,6 @@
 from datetime import datetime
 
+
 class Colors:
     """ ANSI color codes """
     BLACK = "\033[0;30m"
@@ -27,24 +28,31 @@ class Colors:
     CROSSED = "\033[9m"
     END = "\033[0m"
 
+
 def c_login():
     return f'{Colors.GREEN}LOGGED IN{Colors.END}'
+
 
 def c_guild(guild: int):
     return f'{Colors.LIGHT_PURPLE}{guild}{Colors.END}'
 
+
 def c_channel(channel: int):
     return f'{Colors.PURPLE}{channel}{Colors.END}'
+
 
 def c_time():
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     return f'{Colors.DARK_GRAY}{now}{Colors.END}'
 
+
 def c_event(event: str):
     return f'{Colors.LIGHT_CYAN}{event}{Colors.END}'
 
+
 def c_user(user: int):
     return f'{Colors.CYAN}{user}{Colors.END}'
+
 
 def c_err():
     return f'{Colors.RED}{"ERROR"}{Colors.END}'
