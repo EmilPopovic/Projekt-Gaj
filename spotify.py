@@ -1,52 +1,208 @@
-import json, requests
-from secrets import spotify_user_id
-from refresh import Refresh
+"""
+This file is part of Shteff which is released under the GNU General Public License v3.0.
+See file LICENSE or go to <https://www.gnu.org/licenses/gpl-3.0.html> for full license details.
+"""
+
+import requests
+from datetime import timedelta
+
+from secrets import refresh_token, base_64
+from exceptions import *
 
 
-class GetSpotifySongs:
-    def __init__(self, link):
-        self.user_id = spotify_user_id
-        self.spotify_token = ''
-        self.link = link
+class Author:
+    def __init__(
+            self,
+            name,
+            url=None,
+            thumbnail_url=None
+    ):
+        self.name = name
+        self.url = url
+        self.thumbnail_url = thumbnail_url
+
+    def print_with_url_format(self, new_line=False) -> str:
+        name_with_url = f'[{self.name}]({self.url})'
+        return f'{name_with_url}\n' if new_line else name_with_url
+
+    def __repr__(self):
+        return f'Name: {self.name:<25} | url: {self.url}'
 
 
-    def find_songs(self):
-        if 'playlist/' in self.link:
-            playlist_id = self.link.split('playlist/')[1].split('?')[0]
-            query = 'https://api.spotify.com/v1/playlists/{}/tracks'.format(playlist_id)
-        
-        elif 'album/' in self.link:
-            playlist_id = self.link.split('album/')[1].split('?')[0]
-            query = 'https://api.spotify.com/v1/albums/{}/tracks'.format(playlist_id)
-        
-        else:
-            return []
+class SpotifySong:
+    def __init__(
+            self,
+            name=None,
+            url=None,
+            authors=None,
+            thumbnail_url=None,
+            duration=None,
+            error=None
+    ):
+        self.name = name
+        self.url = url
+        self.authors = authors
+        self.thumbnail_url = thumbnail_url
+        self.duration = duration
+        self.error = error
 
-        response = requests.get(query, headers={'Content-Type': 'application/json', 'Authorization': 'Bearer {}'.format(self.spotify_token)})
+    def __repr__(self):
+        return f'Name: {self.name:<50} | url: {self.url}'
+
+
+class SpotifyInfo:
+    # TODO: refresh_token wrapper
+    # TODO: refresh token in regular intervals?
+    spotify_token = ''
+
+    def __init__(self, query):
+        pass
+        # TODO: automatically detect query type
+
+    @classmethod
+    def get_track(cls, url):
+        cls.call_refresh()
+
+        if 'track/' not in url:
+            raise SpotifyExtractError()
+
+        track_id = url.split('track/')[1].split('?')[0]
+        json = cls.get_response(f'https://api.spotify.com/v1/tracks/{track_id}')
+
+        # TODO: extract author thumbnail_url
+        try:
+            return SpotifySong(
+                name = json['name'],
+                url = url,
+                authors = [
+                    Author(
+                        name = author['name'],
+                        url = author['external_urls']['spotify'],
+                        thumbnail_url = None
+                    )
+                    for author in json['artists']
+                ],
+                thumbnail_url = json['album']['images'][-1]['url'],
+                duration = timedelta(milliseconds = json['duration_ms'])
+            )
+
+        except KeyError:
+            raise SpotifyExtractError(json)
+
+    @classmethod
+    def search_spotify(cls, query):
+        cls.call_refresh()
+
+        query = f'https://api.spotify.com/v1/search?q={query.replace(" ", "%20")}&type=track&limit=1&offset=0'
+        json = cls.get_response(query)
+
+        # TODO: extract author thumbnail_url
+        try:
+            item = json['tracks']['items'][0]
+
+            return SpotifySong(
+                name = item['name'],
+                url = item['external_urls']['spotify'],
+                authors = [
+                    Author(
+                        name = author['name'],
+                        url = author['external_urls']['spotify'],
+                        thumbnail_url = None
+                    )
+                    for author in item['artists']
+                ],
+                thumbnail_url = item['album']['images'][0]['url'],
+                duration = timedelta(milliseconds = item['duration_ms'])
+            )
+
+        except KeyError:
+            raise SpotifyExtractError(json)
+
+    @classmethod
+    def songs_from_album(cls, url):
+        # TODO: rewrite to send one request
+        cls.call_refresh()
+
+        if 'album/' not in url:
+            raise SpotifyExtractError()
+
+        query = f'https://api.spotify.com/v1/albums/{url.split("album/")[1].split("?")[0]}/tracks'
+        json = cls.get_response(query)
+
+        try:
+            return [
+                item['external_urls']['spotify']
+                for item in json['items']
+            ]
+
+        except KeyError:
+            raise SpotifyExtractError(json)
+
+    @classmethod
+    def get_playlist(cls, url: str) -> list[SpotifySong]:
+        cls.call_refresh()
+        playlist_id = url.split('playlist/')[1].split('?')[0]
+
+        query = f'https://api.spotify.com/v1/playlists/{playlist_id}/tracks'
+        json = cls.get_response(query)
+
+        try:
+            return [
+                SpotifySong(
+                    name = item['track']['name'],
+                    url = item['track']['external_urls']['spotify'],
+                    authors = [
+                        Author(
+                            name = author['name'],
+                            url = author['external_urls']['spotify'],
+                            thumbnail_url = ''
+                        )
+                        for author in item['track']['artists']
+                    ],
+                    thumbnail_url = item['track']['album']['images'][0]['url'],
+                    duration = timedelta(milliseconds = item['track']['duration_ms'])
+                )
+                for item in json['items']
+            ]
+
+        except KeyError:
+            raise SpotifyExtractError(json)
+
+    @classmethod
+    def songs_from_artist(cls, url):
+        SpotifyInfo.call_refresh()
+        # TODO: finish
+        artist_id = url.split('artist/')[1].split('?')[0]
+
+        artist_query = f'https://api.spotify.com/v1/artists/{artist_id}/tracks'
+        artist_json = cls.get_response(artist_query)
+
+        return
+
+    @classmethod
+    def get_response(cls, query: str) -> dict:
+        response = requests.get(
+            query,
+            headers = {
+                'Content-Type': 'application/json',
+                'Authorization': f'Bearer {cls.spotify_token}'
+            }
+        )
+
+        return response.json()
+
+    @classmethod
+    def call_refresh(cls) -> None:
+        response = requests.post(
+            'https://accounts.spotify.com/api/token',
+            data = {
+                'grant_type': 'refresh_token',
+                'refresh_token': refresh_token
+            },
+            headers = {
+                'Authorization': 'Basic ' + base_64
+            }
+        )
 
         response_json = response.json()
-
-        lista = []
-
-        for i in response_json['items']:
-            if 'playlist/' in self.link:
-                data = i['track']
-                name = data['name']
-                artist = data['album']['artists'][0]['name']
-                lista.append(f'{name} {artist}')
-            
-            else:
-                name = i['name']
-                artist = i['artists'][0]['name']
-                lista.append(f'{name} {artist}')
-
-        return lista
-    
-
-    def call_refresh(self):
-        print('Refreshing token...')
-        refreshCaller = Refresh()
-        self.spotify_token = refreshCaller.refresh()
-        lista = self.find_songs()
-
-        return lista
+        cls.spotify_token = response_json['access_token']
