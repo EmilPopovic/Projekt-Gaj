@@ -3,6 +3,8 @@ This file is part of Shteff which is released under the GNU General Public Licen
 See file LICENSE or go to <https://www.gnu.org/licenses/gpl-3.0.html> for full license details.
 """
 
+# last changed 29/11/22
+
 from colorthief import ColorThief
 from requests import get
 from youtube_dl import YoutubeDL
@@ -10,8 +12,8 @@ from io import BytesIO
 import concurrent.futures
 from datetime import timedelta
 import discord
+from threading import Thread
 
-from thread_with_result import ThreadWithResult
 from spotify import (
     SpotifyInfo,
     SpotifySong,
@@ -106,8 +108,8 @@ class SongGenerator:
         else:
             # multithreading calculating color and extracting source info to save time
             # TODO: set color and source for songs in background
-            source_thread = ThreadWithResult(target = self.set_source, args = ())
-            color_thread = ThreadWithResult(target = self.set_color, args = ())
+            source_thread = Thread(target = self.set_source, args = ())
+            color_thread = Thread(target = self.set_color, args = ())
 
             source_thread.start()
             color_thread.start()
