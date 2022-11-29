@@ -107,15 +107,27 @@ class GuildBot(Player):
                     content += '\n'
 
         if self.music_queue[self.p_index + 1:]:
-            content += '**Queue:**\n'
+            i = self.p_index + 1
+            added = 0
+            content_len = 0
 
-            for i in range(len(self.music_queue) - 1, self.p_index, -1):
-                # only allow first 5 songs in queue if short queue is enabled
+            song_strs: list[str] = []
+
+            while i < len(self.music_queue) and content_len < 1500:
                 if self.short_queue and i - self.p_index >= 5:
                     break
-
                 song = self.music_queue[i]
-                content += f'**{i - self.p_index}** {song.to_msg_format()}\n'
+                to_add = f'**{i - self.p_index}** {song.to_msg_format()}\n'
+                song_strs.append(to_add)
+                content_len += len(to_add)
+                added += 1
+                i += 1
+
+            content += '**Queue:**\n'
+            not_shown = len(self.music_queue[self.p_index + 1:]) - added
+            if not_shown:
+                content += f'And **{not_shown}** more...\n\n'
+            content += ''.join(song_strs[::-1])
 
         # embed
 
