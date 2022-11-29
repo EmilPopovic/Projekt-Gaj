@@ -11,6 +11,7 @@ from discord.ext import commands
 
 from cogs.song_generator import SongGenerator
 from exceptions import *
+from colors import *
 
 
 class Player(commands.Cog):
@@ -89,13 +90,13 @@ class Player(commands.Cog):
                 # if this doesn't seem to make sense to you, don't be afraid, you are not alone
                 # there are most likely dozens of cases that break this code
                 # I wish nothing but the best of luck to you, brave explorer fixing this dumpster fire
-
-                # the song that is playing when we unshuffle
                 current = self.music_queue[self.p_index]
 
                 never_shuffled_part = self.music_queue[:self.shuffle_start_index + 1]
+
                 new_skipped_unshuffled = [song for song in self.skipped_while_shuffled
                                           if song != self.music_queue[self.shuffle_start_index]]
+
                 new_unshuffled = [song for song in self.unshuffled_queue
                                   if song not in self.skipped_while_shuffled and song != current]
 
@@ -225,14 +226,16 @@ class Player(commands.Cog):
             if self.is_looped and self.p_index == len(self.music_queue):
                 self.p_index = self.loop_start_index
 
-            # object of song we want to play
-            current: SongGenerator = self.music_queue[self.p_index]
-            m_url: str = current.set_source() if current.source is None else current.source
+            # set source and color of current SongGenerator object
+            # if not already set
+            current = self.music_queue[self.p_index]
+            m_url = current.get_source_and_color()['source']
 
             # join vc
             try:
                 await self.join()
             except FailedToConnectError:
+                print(f'{c_time()} {c_err()} failed to connect to vc in guild {c_channel(self.guild.id)}')
                 return
 
             self.is_playing = True
