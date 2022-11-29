@@ -30,15 +30,15 @@ class Colors:
 
 
 def c_login():
-    return f'{Colors.GREEN}LOGGED IN{Colors.END}'
+    return f'{Colors.GREEN}{"LOGGED IN":<20}{Colors.END}'
 
 
 def c_guild(guild: int):
-    return f'{Colors.LIGHT_PURPLE}{guild}{Colors.END}'
+    return f'{Colors.LIGHT_PURPLE}{guild:<20}{Colors.END}'
 
 
 def c_channel(channel: int):
-    return f'{Colors.PURPLE}{channel}{Colors.END}'
+    return f'{Colors.PURPLE}{channel:<20}{Colors.END}'
 
 
 def c_time():
@@ -47,12 +47,12 @@ def c_time():
 
 
 def c_event(event: str):
-    return f'{Colors.LIGHT_CYAN}{event}{Colors.END}'
+    return f'{Colors.LIGHT_CYAN}{event:<20}{Colors.END}'
 
 
 def c_user(user: int):
-    return f'{Colors.CYAN}{user}{Colors.END}'
+    return f'{Colors.CYAN}{user:<20}{Colors.END}'
 
 
 def c_err():
-    return f'{Colors.RED}{"ERROR"}{Colors.END}'
+    return f'{Colors.RED}{"ERROR":<20}{Colors.END}'
