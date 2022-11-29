@@ -229,7 +229,7 @@ class MainBot(commands.AutoShardedBot):
         for guild in self.guilds:
             self.music_cogs[guild.id] = await self.add_guild(guild)
 
-        print(f'\n{c_time()} {c_login()} as {self.user}\nBot user id: {c_user(self.user.id)}\n')
+        print(f'{c_time()} {c_login()} as {self.user} with user id: {c_user(self.user.id)}')
 
     async def add_guild(self, guild: discord.guild.Guild) -> object:
         """Creates a GuildBot object for specific guild."""
