@@ -30,35 +30,7 @@ class Player(commands.Cog):
         self.guild = guild
         self.guild_bot = guild_bot
 
-        self.is_playing = False
-        self.is_paused = False
-        self.is_looped = False
-        self.is_looped_single = False
-        self.is_shuffled = False
-        self.is_downloading = False
-        self.short_queue = False
-        self.show_history = False
-        self.was_long_queue = False
-
-        self.p_index = -1
-        self.shuffle_start_index = None
-        self.loop_start_index = None
-
-        # song lists
-        self.music_queue = []
-        self.unshuffled_queue = []
-        self.skipped_while_shuffled = []
-
-        # initiate voice
-        self.vc = None
-        self.v_channel = None
-
-        self.command_queue = []
-
-        thread = Thread(target = self.check_for_commands, args = ())
-
-    def reset_bot_states(self) -> None:
-        # default flags
+        # default player flags
         self.is_playing = False
         self.is_paused = False
         self.is_looped = False
@@ -79,7 +51,38 @@ class Player(commands.Cog):
         self.unshuffled_queue = []
         self.skipped_while_shuffled = []
 
-        # initiate voice
+        # initialize voice
+        self.vc = None
+        self.v_channel = None
+
+        # initialize command queue
+        self.command_queue = []
+        command_thread = Thread(target = self.check_for_commands, args = ())
+        command_thread.start()
+
+    def reset_bot_states(self) -> None:
+        # default player flags
+        self.is_playing = False
+        self.is_paused = False
+        self.is_looped = False
+        self.is_looped_single = False
+        self.is_shuffled = False
+        self.is_downloading = False
+        self.short_queue = False
+        self.show_history = False
+        self.was_long_queue = False
+
+        # default indexes
+        self.p_index = -1
+        self.shuffle_start_index = None
+        self.loop_start_index = None
+
+        # song lists
+        self.music_queue = []
+        self.unshuffled_queue = []
+        self.skipped_while_shuffled = []
+
+        # initialize voice
         self.vc = None
 
         self.command_queue = []
