@@ -71,7 +71,7 @@ class SpotifyInfo:
 
         # TODO: extract author thumbnail_url
         try:
-            return SpotifySong(
+            song = SpotifySong(
                 name = json['name'],
                 url = url,
                 authors = [
@@ -85,6 +85,7 @@ class SpotifyInfo:
                 thumbnail_url = json['album']['images'][-1]['url'],
                 duration = timedelta(milliseconds = json['duration_ms'])
             )
+            return song
 
         except KeyError:
             raise SpotifyExtractError(json)
