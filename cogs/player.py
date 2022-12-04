@@ -3,11 +3,14 @@ This file is part of Shteff which is released under the GNU General Public Licen
 See file LICENSE or go to <https://www.gnu.org/licenses/gpl-3.0.html> for full license details.
 """
 
+# last changed 05/12/22
+
 import asyncio
 import random
 
 import discord
 from discord.ext import commands
+from threading import Thread
 
 from cogs.song_generator import SongGenerator
 from exceptions import *
@@ -36,6 +39,7 @@ class Player(commands.Cog):
         self.short_queue = False
         self.show_history = False
         self.was_long_queue = False
+
         self.p_index = -1
         self.shuffle_start_index = None
         self.loop_start_index = None
@@ -49,8 +53,12 @@ class Player(commands.Cog):
         self.vc = None
         self.v_channel = None
 
+        self.command_queue = []
+
+        thread = Thread(target = self.check_for_commands, args = ())
+
     def reset_bot_states(self) -> None:
-        # default bot states
+        # default flags
         self.is_playing = False
         self.is_paused = False
         self.is_looped = False
@@ -60,6 +68,8 @@ class Player(commands.Cog):
         self.short_queue = False
         self.show_history = False
         self.was_long_queue = False
+
+        # default indexes
         self.p_index = -1
         self.shuffle_start_index = None
         self.loop_start_index = None
@@ -71,6 +81,32 @@ class Player(commands.Cog):
 
         # initiate voice
         self.vc = None
+
+        self.command_queue = []
+
+    async def check_for_commands(self):
+        while True:
+            if len(self.command_queue) > 0:
+                command_dict = self.command_queue.pop(0)
+                await self.execute_command(
+                    command_dict['command'],
+                    *command_dict['args']
+                )
+
+    async def queue_command(self, command, *args):
+        if args:
+            print(*args, sep = '\n')
+            self.command_queue.append({
+                'command': command,
+                'args': list(*args)
+            })
+
+    @staticmethod
+    async def execute_command(command, *args):
+        if args:
+            await command(*args)
+        else:
+            await command()
 
     async def shuffle(self) -> None:
         # lord forgive me for what I am about to code
@@ -116,7 +152,7 @@ class Player(commands.Cog):
         self.vc.pause()
         await self.play_music()
 
-    def pause(self) -> None:
+    async def pause(self) -> None:
         if self.is_playing:
             self.is_playing = False
             self.is_paused = True
@@ -128,7 +164,10 @@ class Player(commands.Cog):
             self.vc.resume()
 
     async def skip(self) -> None:
-        self.vc.pause()
+        if self.vc:
+            self.vc.pause()
+        else:
+            return
 
         # handle case if shuffled
         if self.is_shuffled:
@@ -173,7 +212,7 @@ class Player(commands.Cog):
         self.is_looped_single = False
         self.is_shuffled = False
         if self.is_paused:
-            self.pause()
+            await self.pause()
 
         await self.guild_bot.update_msg()
 
@@ -183,6 +222,7 @@ class Player(commands.Cog):
         await self.guild_bot.update_msg()
 
     async def queue(self) -> None:
+        # todo: self.short_queue = not self.short_queue
         if self.short_queue:
             self.short_queue = False
         else:
@@ -229,7 +269,11 @@ class Player(commands.Cog):
             # set source and color of current SongGenerator object
             # if not already set
             current = self.music_queue[self.p_index]
-            m_url = current.get_source_and_color()['source']
+            try:
+                m_url = current.get_source_and_color()['source']
+            except YTDLError:
+                self.music_queue.pop(self.p_index)
+                return
 
             # join vc
             try:
