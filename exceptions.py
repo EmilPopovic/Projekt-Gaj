@@ -1,3 +1,5 @@
+# last changed 05/12/22
+
 from colors import *
 # TODO: log file?
 
@@ -21,6 +23,11 @@ class BotNotInVCError(Exception):
 
 class InteractionFailedError(Exception):
     pass
+
+
+class YTDLError(Exception):
+    def __init__(self, query):
+        print(f'{c_time()} {c_err()} failed to extract info for: {query}')
 
 
 class SpotifyExtractError(Exception):
