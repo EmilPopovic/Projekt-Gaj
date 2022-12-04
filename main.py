@@ -15,6 +15,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+# last changed 05/12/22
+
 import sys
 import discord
 from discord import app_commands
@@ -22,6 +24,7 @@ from discord.ext import commands
 
 import cogs.guild_bot as mc
 from cogs.anti_spam_cog import anti_spam_cog
+from cogs.player import *
 from colors import *
 from secrets import TOKEN
 from checks import *
@@ -42,10 +45,10 @@ class MainBot(commands.AutoShardedBot):
         @app_commands.describe(song = 'The name or link of song/list.')
         async def play(interaction: discord.Interaction, song: str) -> None:
             """If user calling the command is in a voice channel, adds wanted song/list to queue of that guild."""
-            cog = self.music_cogs[interaction.guild.id]
+            guild_bot = self.music_cogs[interaction.guild.id]
 
             user_vc = interaction.user.voice
-            bot_vc: int | None = cog.vc.channel.id if cog.vc else None
+            bot_vc: int | None = guild_bot.vc.channel.id if guild_bot.vc else None
 
             # if user is not in a voice channel
             if user_vc is None:
@@ -63,13 +66,18 @@ class MainBot(commands.AutoShardedBot):
             else:
                 # TODO: send empty response
                 await interaction.response.send_message('Adding song...', ephemeral = True)
-                await cog.add_to_queue(song, user_vc.channel)
+
+                command = guild_bot.queue_command
+                args = song, user_vc.channel
+                # todo: use guild_bot.queue_command(...)
+                # await guild_bot.queue_command(command, *args)
+                await guild_bot.add_to_queue(song, user_vc.channel)
 
         @self.tree.command(name = 'skip', description = 'Skips currently playing song and plays next in queue.')
         async def skip(interaction: discord.Interaction):
             """Skips to next song in queue."""
+            guild_bot = self.music_cogs[interaction.guild.id]
             try:
-                guild_bot = self.music_cogs[interaction.guild.id]
                 await self.run_if_user_with_bot(interaction, guild_bot, guild_bot.skip)
             except InteractionFailedError:
                 pass
@@ -79,8 +87,8 @@ class MainBot(commands.AutoShardedBot):
         @self.tree.command(name = 'loop', description = 'Loops music queue or single song.')
         async def loop(interaction: discord.Interaction):
             """Loops the following queue including the current song (but not the history)."""
+            guild_bot = self.music_cogs[interaction.guild.id]
             try:
-                guild_bot = self.music_cogs[interaction.guild.id]
                 await self.run_if_user_with_bot(interaction, guild_bot, guild_bot.loop)
             except InteractionFailedError:
                 pass
@@ -90,8 +98,8 @@ class MainBot(commands.AutoShardedBot):
         @self.tree.command(name = 'clear', description = 'Clears music queue and history, stops playing.')
         async def clear(interaction: discord.Interaction):
             """Loops the current song."""
+            guild_bot = self.music_cogs[interaction.guild.id]
             try:
-                guild_bot = self.music_cogs[interaction.guild.id]
                 await self.run_if_user_with_bot(interaction, guild_bot, guild_bot.clear)
             except InteractionFailedError:
                 pass
@@ -101,8 +109,8 @@ class MainBot(commands.AutoShardedBot):
         @self.tree.command(name = 'dc', description = 'Disconnects bot from voice channel.')
         async def dc(interaction: discord.Interaction):
             """Disconnects bot from voice channel."""
+            guild_bot = self.music_cogs[interaction.guild.id]
             try:
-                guild_bot = self.music_cogs[interaction.guild.id]
                 await self.run_if_user_with_bot(interaction, guild_bot, guild_bot.dc)
             except InteractionFailedError:
                 pass
@@ -112,8 +120,8 @@ class MainBot(commands.AutoShardedBot):
         @self.tree.command(name = 'previous', description = 'Skips current song and plays previous.')
         async def previous(interaction: discord.Interaction):
             """Skips current song and plays first song in history, i.e. previous song."""
+            guild_bot = self.music_cogs[interaction.guild.id]
             try:
-                guild_bot = self.music_cogs[interaction.guild.id]
                 await self.run_if_user_with_bot(interaction, guild_bot, guild_bot.previous)
             except InteractionFailedError:
                 pass
@@ -123,8 +131,8 @@ class MainBot(commands.AutoShardedBot):
         @self.tree.command(name = 'queue', description = 'Toggles queue display type (short/long).')
         async def queue(interaction: discord.Interaction):
             """Swaps queue display type. (short/long)"""
+            guild_bot = self.music_cogs[interaction.guild.id]
             try:
-                guild_bot = self.music_cogs[interaction.guild.id]
                 await self.run_if_user_with_bot(interaction, guild_bot, guild_bot.queue)
             except InteractionFailedError:
                 pass
@@ -134,8 +142,8 @@ class MainBot(commands.AutoShardedBot):
         @self.tree.command(name = 'history', description = 'Toggles history display type (show/hide).')
         async def history(interaction: discord.Interaction):
             """Swaps history display type. (show/hide)."""
+            guild_bot = self.music_cogs[interaction.guild.id]
             try:
-                guild_bot = self.music_cogs[interaction.guild.id]
                 await self.run_if_user_with_bot(interaction, guild_bot, guild_bot.history)
             except InteractionFailedError:
                 pass
@@ -145,8 +153,8 @@ class MainBot(commands.AutoShardedBot):
         @self.tree.command(name = 'shuffle', description = 'Toggles queue shuffle.')
         async def shuffle(interaction: discord.Interaction):
             """Shuffles music queue."""
+            guild_bot = self.music_cogs[interaction.guild.id]
             try:
-                guild_bot = self.music_cogs[interaction.guild.id]
                 await self.run_if_user_with_bot(interaction, guild_bot, guild_bot.shuffle)
             except InteractionFailedError:
                 pass
@@ -159,7 +167,7 @@ class MainBot(commands.AutoShardedBot):
             """
             Swaps places of two songs in the queue.
             Numbering of arguments starts with 1, 0 refers to the currently playing song.
-            Indexes starting with 0 are passed to swap method of music cog.
+            Indexes starting with 0 are passed to swap method of music guild_bot.
             """
             # indexes must be greater than 0
             if song1 <= 0 or song2 <= 0:
@@ -176,8 +184,8 @@ class MainBot(commands.AutoShardedBot):
 
             # checking if inputs are valid numbers
             # inputs are valid if both exist in queue
-            cog = self.music_cogs[interaction.guild.id]
-            queue_len = cog.get_queue_len()
+            guild_bot = self.music_cogs[interaction.guild.id]
+            queue_len = len(guild_bot.music_queue[guild_bot.p_index + 1:])
 
             if song1 > queue_len or song2 > queue_len:
                 await interaction.response.send_message(
@@ -185,16 +193,20 @@ class MainBot(commands.AutoShardedBot):
                     ephemeral = True)
                 return
 
-            # swap if guard clauses passed
-            await cog.swap(song1, song2)
+            try:
+                await self.run_if_user_with_bot(interaction, guild_bot, guild_bot.swap, song1, song2)
+            except InteractionFailedError:
+                pass
+            else:
+                await interaction.response.send_message('Songs swapped.', ephemeral = True)
 
         @self.tree.command(name = 'pause', description = 'Pauses or unpauses playing.')
         async def pause(interaction: discord.Interaction):
             """
             Pauses if playing, unpauses if paused.
             """
+            guild_bot = self.music_cogs[interaction.guild.id]
             try:
-                guild_bot = self.music_cogs[interaction.guild.id]
                 await self.run_if_user_with_bot(interaction, guild_bot, guild_bot.pause)
             except InteractionFailedError:
                 pass
@@ -238,7 +250,7 @@ class MainBot(commands.AutoShardedBot):
         return m_cog
 
     @staticmethod
-    async def run_if_user_with_bot(interaction, guild_bot, func):
+    async def run_if_user_with_bot(interaction, guild_bot, func, *args):
         # TODO: docstring
         try:
             user_with_bot_check(interaction, guild_bot)
@@ -264,7 +276,7 @@ class MainBot(commands.AutoShardedBot):
             )
             raise InteractionFailedError()
 
-        await func()
+        await guild_bot.queue_command(func, *args)
 
 
 if __name__ == '__main__':
