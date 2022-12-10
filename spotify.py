@@ -3,13 +3,19 @@ This file is part of Shteff which is released under the GNU General Public Licen
 See file LICENSE or go to <https://www.gnu.org/licenses/gpl-3.0.html> for full license details.
 """
 
-import requests
+# last changed 07/12/22
+# added typehints and optimizing imports
+# Author and SpotifySong converted to dataclasses
+
+from requests import get, post
 from datetime import timedelta
+from dataclasses import dataclass
 
 from secrets import refresh_token, base_64
-from exceptions import *
+from exceptions import SpotifyExtractError
 
 
+@dataclass
 class Author:
     def __init__(
             self,
@@ -25,10 +31,11 @@ class Author:
         name_with_url = f'[{self.name}]({self.url})'
         return f'{name_with_url}\n' if new_line else name_with_url
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'Name: {self.name:<25} | url: {self.url}'
 
 
+@dataclass
 class SpotifySong:
     def __init__(
             self,
@@ -46,7 +53,7 @@ class SpotifySong:
         self.duration = duration
         self.error = error
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'Name: {self.name:<50} | url: {self.url}'
 
 
@@ -55,12 +62,11 @@ class SpotifyInfo:
     # TODO: refresh token in regular intervals?
     spotify_token = ''
 
-    def __init__(self, query):
+    def __init__(self) -> None:
         pass
-        # TODO: automatically detect query type
 
     @classmethod
-    def get_track(cls, url):
+    def get_track(cls, url: str) -> SpotifySong:
         cls.call_refresh()
 
         if 'track/' not in url:
@@ -91,7 +97,7 @@ class SpotifyInfo:
             raise SpotifyExtractError(json)
 
     @classmethod
-    def search_spotify(cls, query):
+    def search_spotify(cls, query: str) -> SpotifySong:
         cls.call_refresh()
 
         query = f'https://api.spotify.com/v1/search?q={query.replace(" ", "%20")}&type=track&limit=1&offset=0'
@@ -120,7 +126,7 @@ class SpotifyInfo:
             raise SpotifyExtractError(json)
 
     @classmethod
-    def songs_from_album(cls, url):
+    def songs_from_album(cls, url: str) -> list[SpotifySong]:
         # TODO: rewrite to send one request
         cls.call_refresh()
 
@@ -170,31 +176,28 @@ class SpotifyInfo:
             raise SpotifyExtractError(json)
 
     @classmethod
-    def songs_from_artist(cls, url):
-        SpotifyInfo.call_refresh()
+    def songs_from_artist(cls, url) -> list[SpotifySong]:
+        cls.call_refresh()
         # TODO: finish
         artist_id = url.split('artist/')[1].split('?')[0]
 
         artist_query = f'https://api.spotify.com/v1/artists/{artist_id}/tracks'
         artist_json = cls.get_response(artist_query)
 
-        return
-
     @classmethod
     def get_response(cls, query: str) -> dict:
-        response = requests.get(
+        response = get(
             query,
             headers = {
                 'Content-Type': 'application/json',
                 'Authorization': f'Bearer {cls.spotify_token}'
             }
         )
-
         return response.json()
 
     @classmethod
     def call_refresh(cls) -> None:
-        response = requests.post(
+        response = post(
             'https://accounts.spotify.com/api/token',
             data = {
                 'grant_type': 'refresh_token',
@@ -204,6 +207,5 @@ class SpotifyInfo:
                 'Authorization': 'Basic ' + base_64
             }
         )
-
         response_json = response.json()
         cls.spotify_token = response_json['access_token']

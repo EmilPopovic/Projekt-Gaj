@@ -15,20 +15,27 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-# last changed 05/12/22
+# last changed 08/12/22
+# typehints, optimizing imports and reordering functions
+# clarifying variable names
 
 import sys
+
 import discord
 from discord import app_commands
 from discord.ext import commands
 
-import cogs.guild_bot as mc
+from cogs.guild_bot import GuildBot
 from cogs.anti_spam_cog import anti_spam_cog
-from cogs.player import *
 from colors import *
 from secrets import TOKEN
-from checks import *
-from exceptions import *
+from checks import user_with_bot_check
+from exceptions import (
+    InteractionFailedError,
+    UserNotInVCError,
+    BotNotInVCError,
+    DifferentChannelsError
+)
 
 
 class MainBot(commands.AutoShardedBot):
@@ -40,7 +47,6 @@ class MainBot(commands.AutoShardedBot):
         super().__init__(command_prefix = '!', intents = intents)
         self.music_cogs = {}
 
-        # TODO: execute commands only if bot is in vc with bot
         @self.tree.command(name = 'play', description = 'Adds a song/list to queue.')
         @app_commands.describe(song = 'The name or link of song/list.')
         async def play(interaction: discord.Interaction, song: str) -> None:
@@ -73,8 +79,10 @@ class MainBot(commands.AutoShardedBot):
                 # await guild_bot.queue_command(command, *args)
                 await guild_bot.add_to_queue(song, user_vc.channel)
 
+        # todo: command function structure docstring
+
         @self.tree.command(name = 'skip', description = 'Skips currently playing song and plays next in queue.')
-        async def skip(interaction: discord.Interaction):
+        async def skip(interaction: discord.Interaction) -> None:
             """Skips to next song in queue."""
             guild_bot = self.music_cogs[interaction.guild.id]
             try:
@@ -96,7 +104,7 @@ class MainBot(commands.AutoShardedBot):
                 await interaction.response.send_message('Toggled loop.', ephemeral = True)
 
         @self.tree.command(name = 'clear', description = 'Clears music queue and history, stops playing.')
-        async def clear(interaction: discord.Interaction):
+        async def clear(interaction: discord.Interaction) -> None:
             """Loops the current song."""
             guild_bot = self.music_cogs[interaction.guild.id]
             try:
@@ -107,7 +115,7 @@ class MainBot(commands.AutoShardedBot):
                 await interaction.response.send_message('Queue cleared.', ephemeral = True)
 
         @self.tree.command(name = 'dc', description = 'Disconnects bot from voice channel.')
-        async def dc(interaction: discord.Interaction):
+        async def dc(interaction: discord.Interaction) -> None:
             """Disconnects bot from voice channel."""
             guild_bot = self.music_cogs[interaction.guild.id]
             try:
@@ -118,7 +126,7 @@ class MainBot(commands.AutoShardedBot):
                 await interaction.response.send_message('Bot disconnected.', ephemeral = True)
 
         @self.tree.command(name = 'previous', description = 'Skips current song and plays previous.')
-        async def previous(interaction: discord.Interaction):
+        async def previous(interaction: discord.Interaction) -> None:
             """Skips current song and plays first song in history, i.e. previous song."""
             guild_bot = self.music_cogs[interaction.guild.id]
             try:
@@ -129,7 +137,7 @@ class MainBot(commands.AutoShardedBot):
                 await interaction.response.send_message('Went to previous song.', ephemeral = True)
 
         @self.tree.command(name = 'queue', description = 'Toggles queue display type (short/long).')
-        async def queue(interaction: discord.Interaction):
+        async def queue(interaction: discord.Interaction) -> None:
             """Swaps queue display type. (short/long)"""
             guild_bot = self.music_cogs[interaction.guild.id]
             try:
@@ -140,7 +148,7 @@ class MainBot(commands.AutoShardedBot):
                 await interaction.response.send_message('Queue display toggled.', ephemeral = True)
 
         @self.tree.command(name = 'history', description = 'Toggles history display type (show/hide).')
-        async def history(interaction: discord.Interaction):
+        async def history(interaction: discord.Interaction) -> None:
             """Swaps history display type. (show/hide)."""
             guild_bot = self.music_cogs[interaction.guild.id]
             try:
@@ -201,7 +209,7 @@ class MainBot(commands.AutoShardedBot):
                 await interaction.response.send_message('Songs swapped.', ephemeral = True)
 
         @self.tree.command(name = 'pause', description = 'Pauses or unpauses playing.')
-        async def pause(interaction: discord.Interaction):
+        async def pause(interaction: discord.Interaction) -> None:
             """
             Pauses if playing, unpauses if paused.
             """
@@ -213,44 +221,8 @@ class MainBot(commands.AutoShardedBot):
             else:
                 await interaction.response.send_message('Player paused.', ephemeral = True)
 
-    async def on_guild_join(self, guild) -> None:
-        # TODO: test
-        """Creates GuildBot if bot joins a guild while running."""
-        await self.add_guild(guild)
-
-    async def on_ready(self):
-        """
-        Runs on bot login.
-        Syncs slash commands.
-        Creates GuildBot objects for every guild.
-        """
-        # TODO: print copyright license text to stdout
-        # sync commands
-        print(f'{c_time()} {c_event("SYNCING COMMANDS")}')
-        try:
-            synced = await self.tree.sync()
-            print(f'{c_time()} {c_event("SYNCED")} {len(synced)} command(s)')
-        except Exception as e:
-            print(f'{c_time()} {c_err()} failed to sync command(s), {c_event("EXITING")}, Exception:\n{e}')
-            sys.exit()
-
-        self.remove_command('help')
-        await self.add_cog(anti_spam_cog(self))
-
-        # create music cog for every guild bot is in
-        for guild in self.guilds:
-            self.music_cogs[guild.id] = await self.add_guild(guild)
-
-        print(f'{c_time()} {c_login()} as {self.user} with user id: {c_user(self.user.id)}')
-
-    async def add_guild(self, guild: discord.guild.Guild) -> object:
-        """Creates a GuildBot object for specific guild."""
-        m_cog = await mc.GuildBot.create_music_cog(bot = self, guild = guild)
-        print(f'{c_time()} {c_event("ADDED GUILD")} {c_guild(guild.id)} with channel {c_channel(m_cog.bot_channel_id)}')
-        return m_cog
-
     @staticmethod
-    async def run_if_user_with_bot(interaction, guild_bot, func, *args):
+    async def run_if_user_with_bot(interaction, guild_bot, func, *args) -> None:
         # TODO: docstring
         try:
             user_with_bot_check(interaction, guild_bot)
@@ -277,6 +249,42 @@ class MainBot(commands.AutoShardedBot):
             raise InteractionFailedError()
 
         await guild_bot.queue_command(func, *args)
+
+    async def on_guild_join(self, guild) -> None:
+        # TODO: test
+        """Creates GuildBot if bot joins a guild while running."""
+        await self.add_guild(guild)
+
+    async def add_guild(self, guild: discord.guild.Guild) -> GuildBot:
+        """Creates a GuildBot object for specific guild."""
+        # todo: add {c_time()} to functions in colors.py
+        guild_bot = await GuildBot.create_music_cog(bot = self, guild = guild)
+        print(f'{c_time()} {c_event("ADDED GUILD")} {c_guild(guild.id)} with channel {c_channel(guild_bot.bot_channel_id)}')
+        return guild_bot
+
+    async def on_ready(self) -> None:
+        """
+        Runs on bot login.
+        Syncs slash commands.
+        Creates GuildBot objects for every guild.
+        """
+        # sync commands
+        print(f'{c_time()} {c_event("SYNCING COMMANDS")}')
+        try:
+            synced = await self.tree.sync()
+            print(f'{c_time()} {c_event("SYNCED")} {len(synced)} command(s)')
+        except Exception as e:
+            print(f'{c_time()} {c_err()} failed to sync command(s), {c_event("EXITING")}, Exception:\n{e}')
+            sys.exit()
+
+        self.remove_command('help')
+        await self.add_cog(anti_spam_cog(self))
+
+        # create music cog for every guild bot is in
+        for guild in self.guilds:
+            self.music_cogs[guild.id] = await self.add_guild(guild)
+
+        print(f'{c_time()} {c_login()} as {self.user} with user id: {c_user(self.user.id)}')
 
 
 if __name__ == '__main__':
