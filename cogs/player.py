@@ -3,7 +3,8 @@ This file is part of Shteff which is released under the GNU General Public Licen
 See file LICENSE or go to <https://www.gnu.org/licenses/gpl-3.0.html> for full license details.
 """
 
-# last changed 05/12/22
+# last changed 08/12/22
+# added check for current.is_good in play_music()
 
 import asyncio
 import random
@@ -272,11 +273,13 @@ class Player(commands.Cog):
             # set source and color of current SongGenerator object
             # if not already set
             current = self.music_queue[self.p_index]
-            try:
-                m_url = current.get_source_and_color()['source']
-            except YTDLError:
+            m_url = current.get_source_and_color()['source']
+
+            # if YouTube extract fails
+            if not current.is_good:
+                print(f'{c_time()} {c_err()} invalid song object: {current}')
                 self.music_queue.pop(self.p_index)
-                return
+                await self.play_music()
 
             # join vc
             try:

@@ -3,21 +3,27 @@ This file is part of Shteff which is released under the GNU General Public Licen
 See file LICENSE or go to <https://www.gnu.org/licenses/gpl-3.0.html> for full license details.
 """
 
-# last changed 29/11/22
+# last changed 08/12/22
+# added typehints and optimizing imports
+# changes to YouTube exceptions
+# removed list creation multithreading
 
+import discord
 from colorthief import ColorThief
 from requests import get
 from youtube_dl import YoutubeDL
 from io import BytesIO
-import concurrent.futures
 from datetime import timedelta
-import discord
 from threading import Thread
 
 from spotify import (
     SpotifyInfo,
     SpotifySong,
     Author
+)
+from exceptions import (
+    SpotifyExtractError,
+    YTDLError
 )
 
 
@@ -26,6 +32,7 @@ class SongGenerator:
     YDL_OPTIONS = {
         'format': 'bestaudio',
         'audioquality': '0',
+        'audio_format': 'mp3',
         'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
         'restrictfilenames': True,
         'noplaylist': True,
@@ -51,7 +58,9 @@ class SongGenerator:
         self.query = query
         self.error = None
 
-        # the uid attribute makes every instance of Song class unique even if identical data is stored
+        # the uid attribute makes every instance of Song class
+        # unique even if identical data is stored
+        # used to determine the order of songs being added
         self.uid = SongGenerator.ind
         SongGenerator.ind += 1
 
@@ -66,31 +75,32 @@ class SongGenerator:
         self.yt_link: str | None          = None
         self.color: int | None            = None
         self.source: str | None           = None
+        self.is_good: bool                = True
 
         if isinstance(query, str):
             if 'www.youtube.com' in query:
                 # TODO: if song is YouTube link
-                self.error = 'YouTube link support coming soon!'
+                self.is_good = False
                 return
 
             else:
                 self.set_spotify_info(query)
-                self.is_good = True
 
         elif isinstance(query, SpotifySong):
-            self.url = query.url
             self.set_spotify_secondary(query)
-            self.is_good = True
 
-    def set_spotify_info(self, query):
-        # TODO: handle spotify exceptions
-        if 'open.spotify.com' in query:
-            info: SpotifySong = SpotifyInfo.get_track(query)
-        else:
-            info: SpotifySong = SpotifyInfo.search_spotify(query)
+    def set_spotify_info(self, query: str) -> bool|None:
+        try:
+            if 'open.spotify.com' in query:
+                info: SpotifySong = SpotifyInfo.get_track(query)
+            else:
+                info: SpotifySong = SpotifyInfo.search_spotify(query)
+        except SpotifyExtractError:
+            self.is_good = False
+            return
         self.set_spotify_secondary(info)
 
-    def set_spotify_secondary(self, info):
+    def set_spotify_secondary(self, info: SpotifySong) -> None:
         self.name = info.name
         self.authors = info.authors
         self.author = self.authors[0]
@@ -98,7 +108,7 @@ class SongGenerator:
         self.thumbnail_link = info.thumbnail_url
         self.spotify_link = info.url
 
-    def get_source_and_color(self):
+    def get_source_and_color(self) -> dict:
         if self.source and self.color:
             pass
         elif self.source and self.color is None:
@@ -113,6 +123,7 @@ class SongGenerator:
 
             source_thread.start()
             color_thread.start()
+            # todo: wtf error
             source_thread.join()
             color_thread.join()
 
@@ -122,7 +133,12 @@ class SongGenerator:
         }
 
     def set_source(self) -> None:
-        yt_info = self.search_yt(f'{self.author} - {self.name}')
+        try:
+            yt_info = self.search_yt(f'{self.author} - {self.name}')
+        except YTDLError:
+            self.is_good = False
+            return
+
         self.source = yt_info['source']
         self.yt_id = yt_info['id']
         self.yt_link = f'https://www.youtube.com/watch?v={self.yt_id}'
@@ -137,6 +153,7 @@ class SongGenerator:
         palette = color_thief.get_palette(color_count = 5)
         color = palette[0]
         # set preferred embed color
+        # todo: format to discord in message update, not in song gen
         self.color = discord.Color.from_rgb(*color)
 
     def to_msg_format(self) -> str:
@@ -154,25 +171,26 @@ class SongGenerator:
         return f'{minutes}:{seconds:02}'
 
     @staticmethod
-    def search_yt(query: str) -> dict | bool:
+    def search_yt(query: str) -> dict:
         with YoutubeDL(SongGenerator.YDL_OPTIONS) as ydl:
             try:
                 info = ydl.extract_info(f'ytsearch:{query}', download = False)['entries'][0]
-            except Exception as e:
-                print(e)
-                return False
+            except:
+                raise YTDLError(query)
+        return {
+            'source': info['formats'][0]['url'],
+            'title': info['title'],
+            'id': info['id']
+        }
 
-        return {'source': info['formats'][0]['url'], 'title': info['title'], 'id': info['id']}
+    def check_if_good(self) -> bool:
+        return self.is_good
 
-    @staticmethod
-    def get_song_gens(query):
-        return SongGenerator.multithread_extract(SpotifyInfo.get_playlist(query))
-
-    @staticmethod
-    def multithread_extract(songs: list[SpotifySong]):
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            lst = [song for song in executor.map(SongGenerator, songs)]
-        return sorted(lst)
+    @classmethod
+    def get_song_gens(cls, query: str):
+        songs = SpotifyInfo.get_playlist(query)
+        lst = [SongGenerator(song) for song in songs]
+        return filter(cls.check_if_good, lst)
 
     def __eq__(self, other) -> bool:
         return self.uid == other.uid
@@ -183,5 +201,5 @@ class SongGenerator:
     def __lt__(self, other) -> bool:
         return self.uid < other.uid
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'SongGenerator object | name: {self.name:<60} | url: {self.spotify_link}'

@@ -3,7 +3,8 @@ This file is part of Shteff which is released under the GNU General Public Licen
 See file LICENSE or go to <https://www.gnu.org/licenses/gpl-3.0.html> for full license details.
 """
 
-# last changed 05/12/22
+# last changed 08/12/22
+# started button updates
 
 from os import fdopen, remove
 from shutil import move, copymode
@@ -289,6 +290,7 @@ class Buttons(discord.ui.View):
         return bot.music_cogs[interaction.guild.id]
 
     # first row
+    # todo: add try-except blocks like it is in main
 
     @discord.ui.button(label = '⎇', style = BtnStyle.grey, row = 0)
     async def shuffle_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -306,7 +308,7 @@ class Buttons(discord.ui.View):
     @discord.ui.button(label = '▉', style = BtnStyle.grey, row = 0)
     async def pause_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         cog = Buttons.get_cog(interaction)
-        cog.pause()
+        await cog.pause()
         button.style = BtnStyle.green if cog.is_paused else BtnStyle.grey
         button.label = '▶' if cog.is_paused else '▉'
         await interaction.response.edit_message(view = self)
