@@ -3,8 +3,12 @@ This file is part of Shteff which is released under the GNU General Public Licen
 See file LICENSE or go to <https://www.gnu.org/licenses/gpl-3.0.html> for full license details.
 """
 
-# last changed 08/12/22
-# added check for current.is_good in play_music()
+# last changed 23/12/22
+# started moving guild_bot related attributes
+# and methods to guild_bot
+# moved timestamp print to colors.py
+# added message updates
+# removed is_downloading flag
 
 import asyncio
 import random
@@ -13,14 +17,13 @@ import discord
 from discord.ext import commands
 from threading import Thread
 
-from cogs.song_generator import SongGenerator
+from components.song_generator import SongGenerator
 from exceptions import *
 from colors import *
 
 
 class Player(commands.Cog):
     # TODO: write docstring
-    # TODO: update_msg wrapper
     # encoder options
     FFMPEG_OPTIONS = {
         'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
@@ -37,9 +40,6 @@ class Player(commands.Cog):
         self.is_looped = False
         self.is_looped_single = False
         self.is_shuffled = False
-        self.is_downloading = False
-        self.short_queue = False
-        self.show_history = False
         self.was_long_queue = False
 
         # default indexes
@@ -68,9 +68,6 @@ class Player(commands.Cog):
         self.is_looped = False
         self.is_looped_single = False
         self.is_shuffled = False
-        self.is_downloading = False
-        self.short_queue = False
-        self.show_history = False
         self.was_long_queue = False
 
         # default indexes
@@ -167,6 +164,8 @@ class Player(commands.Cog):
             self.is_paused = False
             self.vc.resume()
 
+        await self.guild_bot.update_msg()
+
     async def skip(self) -> None:
         if self.vc:
             self.vc.pause()
@@ -182,11 +181,11 @@ class Player(commands.Cog):
 
         # if looped single, don't loop
         if self.is_looped_single:
-            self.loop()
+            await self.loop()
 
         await self.play_music()
 
-    def loop(self) -> None:
+    async def loop(self) -> None:
 
         if self.vc is None:
             pass
@@ -206,6 +205,8 @@ class Player(commands.Cog):
             self.is_looped = False
             self.is_looped_single = True
 
+        await self.guild_bot.update_msg()
+
     async def clear(self) -> None:
         self.music_queue = []
 
@@ -223,31 +224,6 @@ class Player(commands.Cog):
     async def dc(self) -> None:
         await self.vc.disconnect()
         self.reset_bot_states()
-        await self.guild_bot.update_msg()
-
-    async def queue(self) -> None:
-        # todo: self.short_queue = not self.short_queue
-        if self.short_queue:
-            self.short_queue = False
-        else:
-            self.short_queue = True
-
-        await self.guild_bot.update_msg()
-
-    async def history(self) -> None:
-        if self.show_history:
-            self.show_history = False
-
-            if self.was_long_queue:
-                self.short_queue = False
-
-        else:
-            self.show_history = True
-
-            if not self.short_queue:
-                self.was_long_queue = True
-                self.short_queue = True
-
         await self.guild_bot.update_msg()
 
     async def join(self):
@@ -273,19 +249,22 @@ class Player(commands.Cog):
             # set source and color of current SongGenerator object
             # if not already set
             current = self.music_queue[self.p_index]
+            current.set_lyrics()
             m_url = current.get_source_and_color()['source']
 
+            # todo: test this
             # if YouTube extract fails
             if not current.is_good:
-                print(f'{c_time()} {c_err()} invalid song object: {current}')
+                print(f'{c_err()} invalid song object: {current}')
                 self.music_queue.pop(self.p_index)
-                await self.play_music()
+                # skip current track
+                await self.skip()
 
             # join vc
             try:
                 await self.join()
             except FailedToConnectError:
-                print(f'{c_time()} {c_err()} failed to connect to vc in guild {c_channel(self.guild.id)}')
+                print(f'{c_err()} failed to connect to vc in guild {c_channel(self.guild.id)}')
                 return
 
             self.is_playing = True
@@ -295,49 +274,40 @@ class Player(commands.Cog):
             # Alan Turing himself poured his essence into this piece of code
             # for the love of all that is good don't touch the lines below
             loop = asyncio.get_event_loop()
-            self.vc.play(discord.FFmpegPCMAudio(m_url, **self.FFMPEG_OPTIONS),
-                         after = lambda _: loop.create_task(self.play_music()))
+            self.vc.play(
+                discord.FFmpegPCMAudio(m_url, **self.FFMPEG_OPTIONS),
+                after = lambda _: loop.create_task(self.play_music())
+            )
 
         else:
             # if we finished playing the last song in queue
+            # todo: i don't know what this is doing but it doesn't do what it should
             self.is_playing = False
             await self.guild_bot.update_msg()
 
     async def add_to_queue(self, query, vc):
-        self.is_downloading = True
-        await self.guild_bot.update_msg()
+        # todo: find out what we use this for
         self.v_channel = vc
 
-        song = None
-
         if 'https://open.spotify.com/track/' in query:
-            self.music_queue.append(SongGenerator(query))
-
+            songs = [SongGenerator(query)]
+            self.music_queue.extend(songs)
         elif 'https://open.spotify.com/album/' in query:
-            # TODO: remove test timer
-            # TODO: get album
-            t0 = datetime.now()
-            print('Starting extract.')
-
-            # self.music_queue += self.multiprocess_get_songs(SpotifyInfo.songs_from_album(query))
-
-            t1 = datetime.now()
-            print(t1 - t0)
-            print('extract ended')
-
+            songs = SongGenerator.get_song_gens(query)
+            self.music_queue.extend(songs)
         elif 'https://open.spotify.com/playlist/' in query:
-            self.music_queue += SongGenerator.get_song_gens(query)
-
+            songs = SongGenerator.get_song_gens(query)
+            self.music_queue.extend(songs)
         else:
-            song = SongGenerator(query)
-            self.music_queue.append(song)
+            songs = [SongGenerator(query)]
+            self.music_queue.append(songs)
 
         if self.is_shuffled:
-            self.unshuffled_queue.append(song)
+            self.unshuffled_queue.extend(songs)
+
         if not self.is_playing:
             await self.play_music()
 
-        self.is_downloading = False
         await self.guild_bot.update_msg()
 
     async def swap(self, i: int, j: int) -> None:
@@ -349,11 +319,3 @@ class Player(commands.Cog):
         i, j = i + self.p_index, j + self.p_index
         self.music_queue[i], self.music_queue[j] = self.music_queue[j], self.music_queue[i]
         await self.guild_bot.update_msg()
-
-    def update_ui(self, func):
-        # TODO: use decorator for ui update after method
-        def wrapper():
-            func()
-            self.guild_bot.update_msg()
-
-        return wrapper()

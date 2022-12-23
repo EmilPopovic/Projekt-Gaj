@@ -3,8 +3,15 @@ This file is part of Shteff which is released under the GNU General Public Licen
 See file LICENSE or go to <https://www.gnu.org/licenses/gpl-3.0.html> for full license details.
 """
 
-# last changed 08/12/22
-# started button updates
+# last changed 23/12/22
+# started lyrics update
+# moved timestamp print to colors.py
+# started adding channel checks to buttons
+# added for guild_bot commands
+# renamed queue and history to
+# toggle_queue and toggle_history
+# changed some comments
+# deleted old docstring
 
 from os import fdopen, remove
 from shutil import move, copymode
@@ -13,47 +20,20 @@ from tempfile import mkstemp
 import discord
 
 from colors import *
-from cogs.player import Player
+from components.player import Player
+from checks import user_with_bot_check
+from exceptions import (
+    InteractionFailedError,
+    UserNotInVCError,
+    BotNotInVCError,
+    DifferentChannelsError
+)
 
 
 class GuildBot(Player):
     # TODO: rewrite docstring
     """
-    a music cog (instance of GuildBot class) is created for every guild the bot is in
-
-    the music cog executes slash commands defined in main.py
-    GuildBot objects control their own Buttons and handle interactions from them
-
-    GuildBot objects manipulate their configuration files
-    > channel_ids.txt
-        > stores [guild_id, command_channel_id] pairs
-        > the command message is displayed in the command channel of every guild
-        > the GuildBot can recover a deleted command channel on bot start or guild reset
-    > server_lists/{guild_id}.txt
-        > server_lists directory contains a file for every guild
-        > a guild can have a virtually unlimited number of lists associated with it
-        > start of a new list is defined with ">>>{list_name}<<<"
-        > every line under a specific list name is considered a song name on the list
-
-    all music cogs are part of the same MainBot object stored in GuildBot.bot
-
-    every GuildBot instance stores bot states
-        > is_playing: Bool - if a pointer is currently on a song
-        > is_paused: Bool - if the playing of a song is paused
-        > is_looped: Bool - if queue is looped
-        > is_looped_single: Bool - if single track is looped
-        > is_shuffled: Bool - if queue or part of queue is shuffled
-        > is_downloading: Bool - if a track or list is currently being downloaded
-        > short_queue
-        > show_history
-        > was_long_queue
-        > p_index
-        > shuffle_start_index
-        > music_queue: list - a list of queued and already played song, a song is represented by a Song object
-        > unshuffled_queue
-        > skipped_while_shuffled
-        > command_message
-        > vc
+    docstring
     """
     # MainBot instance GuildBot instance is in
     bot = None
@@ -65,6 +45,14 @@ class GuildBot(Player):
 
         # id of command message
         self.command_message: discord.Message | None = None
+
+        self.show_lyrics = False
+        self.short_queue = False
+        self.show_history = False
+
+        # todo: make queue display toggling a single button
+        # todo: should behave like loop does
+        # todo: show a couple of verses at a time, move with arrows
 
     # async part of __init__
     async def __init_async__(self) -> None:
@@ -88,11 +76,19 @@ class GuildBot(Player):
 
         self.command_message = await GuildBot.bot.get_channel(self.bot_channel_id).send(embed = embed, view = Buttons())
 
+    def reset_bot_states(self) -> None:
+        super().reset_bot_states()
+        self.show_lyrics = False
+        self.short_queue = False
+        self.show_history = False
+
     async def update_msg(self) -> None:
         # TODO: finish docstring
         """Refreshes command message according to current bot states, lists and playing status."""
         # message content
-        # TODO: check if content longer than content character limit
+        # todo: make history display a 50/50 split between history and queue
+        # todo: maybe add a mode where songs are shown in order and the current song is bold
+        # todo: if that is made, make list showing buttons a single button that loops through possible display modes
         # TODO: show playing progress bar
         content = ''
 
@@ -116,6 +112,7 @@ class GuildBot(Player):
 
             song_strs: list[str] = []
 
+            # God save me
             while i < len(self.music_queue) and content_len < 1500:
                 if self.short_queue and i - self.p_index >= 5:
                     break
@@ -134,7 +131,7 @@ class GuildBot(Player):
 
         # embed
 
-        if self.music_queue[self.p_index:] and self.is_playing:
+        if self.music_queue[self.p_index:] and self.is_playing or self.is_paused:
             current = self.music_queue[self.p_index]
 
             embed = discord.Embed(
@@ -157,8 +154,14 @@ class GuildBot(Player):
                 value = f'{current.timedelta_duration_to_str()}',
                 inline = False
             )
-
             # TODO: maybe add release year inline with duration?
+
+            if self.show_lyrics:
+                embed.add_field(
+                    name = 'Lyrics',
+                    value = current.lyrics[:1024],
+                    inline = False
+                )
 
             embed.add_field(
                 name = 'Track links:',
@@ -175,6 +178,8 @@ class GuildBot(Player):
 
             embed.set_thumbnail(url = current.thumbnail_link)
 
+            embed.set_footer(text = 'We do not guarantee the accuracy of the data provided.')
+
         else:
             # set idle embed
             embed = discord.Embed(
@@ -182,12 +187,43 @@ class GuildBot(Player):
                 description = 'Use /play to add more songs to queue.',
                 color = 0xf1c40f
             )
+            embed.set_footer(text = '')
 
         await self.command_message.edit(
             content = content,
             embed = embed,
             view = Buttons()
         )
+
+    async def toggle_queue(self) -> None:
+        # todo: function call needs to be added to command queue
+        self.short_queue = not self.short_queue
+        await self.guild_bot.update_msg()
+
+    async def toggle_history(self) -> None:
+        # todo: function call needs to be added to command queue
+        if self.show_history:
+            self.show_history = False
+            if self.was_long_queue:
+                self.short_queue = False
+
+        else:
+            self.show_history = True
+            if not self.short_queue:
+                self.was_long_queue = True
+                self.short_queue = True
+
+        await self.guild_bot.update_msg()
+
+    async def toggle_lyrics(self):
+        # todo: function call needs to be added to command queue
+        if self.show_lyrics:
+            self.show_lyrics = False
+        else:
+            self.show_lyrics = True
+            current = self.music_queue[self.p_index]
+            current.set_lyrics()
+        await self.update_msg()
 
     @staticmethod
     async def get_id(guild: discord.guild.Guild) -> int:
@@ -196,14 +232,12 @@ class GuildBot(Player):
 
         with open('channel_ids.txt') as f:
             for line in f:
-                # every line is a pair of {guild id} {channel id}
+                # every line is a pair of '{guild id} {channel id}'
                 r = line.split()
                 if int(r[0]) == guild_id:
                     channel_id = int(r[1])
-
-                    # check if channel still exists
+                    # check if channel doesn't exist currently
                     guild_channels = [channel.id for channel in guild.text_channels]
-
                     if channel_id not in guild_channels:
                         replaced_info = await GuildBot.replace_command_channel(guild, channel_id)
                         # info to replace old channel id
@@ -211,22 +245,17 @@ class GuildBot(Player):
                         subst = replaced_info['subst']
                         # new id
                         channel_id = replaced_info['id']
-
                         replaced = True
-
                     break
-
             else:
                 # existing channel was not found
                 # has to create new channel
                 channel = await guild.create_text_channel('shteffs-disco')
                 channel_id = channel.id
-
+                # add new channel to database
                 with open('channel_ids.txt', 'a') as g:
                     g.write(f'{guild_id} {channel_id}\n')
-
-                print(f'{c_time()} {c_event("CREATED CHANNEL")} {c_channel(channel_id)}')
-
+                print(f'{c_event("CREATED CHANNEL")} {c_channel(channel_id)}')
             f.close()
 
             if replaced:
@@ -240,7 +269,7 @@ class GuildBot(Player):
         channel = await guild.create_text_channel('shteffs-disco')
         channel_id = channel.id
 
-        print(f'{c_time()} Command channel deleted, {c_event("CREATED CHANNEL")} {c_channel(channel_id)}')
+        print(f'Command channel deleted, {c_event("CREATED CHANNEL")} {c_channel(channel_id)}')
 
         return {'pattern': f'{new_id}', 'subst': f'{channel_id}', 'id': channel_id}
 
@@ -261,7 +290,7 @@ class GuildBot(Player):
         move(abs_path, file_path)
 
     @staticmethod
-    async def create_music_cog(bot, guild: discord.guild.Guild):
+    async def create_guild_bot(bot, guild: discord.guild.Guild):
         """
         Creates a GuildBot object for guild with id guild_id.
         A GuildBot is only created by calling this function, not by directly declaring an instance.
@@ -284,76 +313,132 @@ class Buttons(discord.ui.View):
         super().__init__(timeout = timeout)
 
     @staticmethod
-    def get_cog(interaction: discord.Interaction):
+    def get_bot(interaction: discord.Interaction):
         """Returns GuildBot object whose Buttons were interacted with."""
         bot = GuildBot.bot
-        return bot.music_cogs[interaction.guild.id]
+        return bot.guild_bots[interaction.guild.id]
+
+    @staticmethod
+    async def run_if_user_with_bot(interaction, guild_bot, func, command_type='player', *args) -> None:
+        # todo: copy docstring from main
+        # todo: check if guild_bot command or player command
+        try:
+            user_with_bot_check(interaction, guild_bot)
+
+        except UserNotInVCError:
+            await interaction.response.send_message(
+                'Connect to a voice channel to use this command.',
+                ephemeral = True
+            )
+            raise InteractionFailedError()
+
+        except BotNotInVCError:
+            await interaction.response.send_message(
+                'Bot has to be with you in a voice channel to use this command.',
+                ephemeral = True
+            )
+            raise InteractionFailedError()
+
+        except DifferentChannelsError:
+            await interaction.response.send_message(
+                'You and the bot are in different voice channels, move to use this command.',
+                ephemeral = True
+            )
+            raise InteractionFailedError()
+
+        if command_type == 'player':
+            await guild_bot.queue_command(func, *args)
+        elif command_type == 'guild_bot':
+            await func()
 
     # first row
     # todo: add try-except blocks like it is in main
+    # todo: make player commands work as expected
+    # todo: some wierd error with discord.ui.view when skipping?
 
     @discord.ui.button(label = '⎇', style = BtnStyle.grey, row = 0)
     async def shuffle_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        cog = Buttons.get_cog(interaction)
+        cog = Buttons.get_bot(interaction)
         await cog.shuffle()
         button.style = BtnStyle.green if cog.is_shuffled else BtnStyle.grey
         await interaction.response.edit_message(view = self)
 
     @discord.ui.button(label = '◁', style = BtnStyle.grey, row = 0)
     async def previous_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        cog = Buttons.get_cog(interaction)
-        await cog.previous()
+        guild_bot = Buttons.get_bot(interaction)
+        await guild_bot.previous()
         await interaction.response.edit_message(view = self)
 
     @discord.ui.button(label = '▉', style = BtnStyle.grey, row = 0)
     async def pause_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        cog = Buttons.get_cog(interaction)
-        await cog.pause()
-        button.style = BtnStyle.green if cog.is_paused else BtnStyle.grey
-        button.label = '▶' if cog.is_paused else '▉'
+        guild_bot = Buttons.get_bot(interaction)
+        await guild_bot.pause()
+        button.style = BtnStyle.green if guild_bot.is_paused else BtnStyle.grey
+        button.label = '▶' if guild_bot.is_paused else '▉'
         await interaction.response.edit_message(view = self)
 
     @discord.ui.button(label = '▷', style = BtnStyle.grey, row = 0)
     async def skip_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        cog = Buttons.get_cog(interaction)
-        await cog.skip()
+        guild_bot = Buttons.get_bot(interaction)
+        await guild_bot.skip()
         await interaction.response.edit_message(view = self)
 
     @discord.ui.button(label = '⭯', style = BtnStyle.grey, row = 0)
     async def loop_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        cog = Buttons.get_cog(interaction)
-        cog.loop()
-        button.style = BtnStyle.green if cog.is_looped else BtnStyle.grey
+        guild_bot = Buttons.get_bot(interaction)
+        await guild_bot.loop()
+        button.style = BtnStyle.green if guild_bot.is_looped else BtnStyle.grey
         await interaction.response.edit_message(view = self)
 
     # second row
 
     @discord.ui.button(label = '✖', style = BtnStyle.red, row = 1)
     async def clear_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        cog = Buttons.get_cog(interaction)
-        await cog.clear()
+        guild_bot = Buttons.get_bot(interaction)
+        await guild_bot.clear()
         await interaction.response.edit_message(view = self)
 
     @discord.ui.button(label = '#', style = BtnStyle.red, row = 1)
     async def dc_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        cog = Buttons.get_cog(interaction)
-        await cog.dc()
+        guild_bot = Buttons.get_bot(interaction)
+        await guild_bot.dc()
         await interaction.response.edit_message(view = self)
 
-    @discord.ui.button(label = '≡', style = BtnStyle.grey, row = 1, disabled = True)
-    async def list_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.edit_message(view = self)
+    @discord.ui.button(label = '≡', style = BtnStyle.grey, row = 1)
+    async def lyrics_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        guild_bot = Buttons.get_bot(interaction)
+        button.style = BtnStyle.green if guild_bot.show_lyrics else BtnStyle.grey
+
+        try:
+            await self.run_if_user_with_bot(interaction, guild_bot, guild_bot.toggle_lyrics, 'guild_bot')
+        except InteractionFailedError:
+            pass
+        else:
+            button.style = BtnStyle.green if guild_bot.show_lyrics else BtnStyle.grey
+            await interaction.response.edit_message(view = self)
 
     @discord.ui.button(label = '⯆', style = BtnStyle.grey, row = 1)
     async def queue_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        cog = Buttons.get_cog(interaction)
-        await cog.queue()
-        button.style = BtnStyle.green if cog.short_queue else BtnStyle.grey
-        await interaction.response.edit_message(view = self)
+        guild_bot = Buttons.get_bot(interaction)
+        button.style = BtnStyle.green if guild_bot.short_queue else BtnStyle.grey
+
+        try:
+            await self.run_if_user_with_bot(interaction, guild_bot, guild_bot.toggle_queue, 'guild_bot')
+        except InteractionFailedError:
+            pass
+        else:
+            button.style = BtnStyle.green if guild_bot.short_queue else BtnStyle.grey
+            await interaction.response.edit_message(view = self)
 
     @discord.ui.button(label = '⯅', style = BtnStyle.grey, row = 1)
     async def history_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        cog = Buttons.get_cog(interaction)
-        await cog.history()
-        button.style = BtnStyle.green if cog.show_history else BtnStyle.grey
-        await interaction.response.edit_message(view = self)
+        guild_bot = Buttons.get_bot(interaction)
+        button.style = BtnStyle.green if guild_bot.show_history else BtnStyle.grey
+
+        try:
+            await self.run_if_user_with_bot(interaction, guild_bot, guild_bot.toggle_history, 'guild_bot')
+        except InteractionFailedError:
+            pass
+        else:
+            button.style = BtnStyle.green if guild_bot.show_history else BtnStyle.grey
+            await interaction.response.edit_message(view = self)

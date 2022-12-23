@@ -3,10 +3,8 @@ This file is part of Shteff which is released under the GNU General Public Licen
 See file LICENSE or go to <https://www.gnu.org/licenses/gpl-3.0.html> for full license details.
 """
 
-# last changed 08/12/22
-# added typehints and optimizing imports
-# changes to YouTube exceptions
-# removed list creation multithreading
+# last changed 23/12/22
+# started adding lyrics support
 
 import discord
 from colorthief import ColorThief
@@ -16,7 +14,7 @@ from io import BytesIO
 from datetime import timedelta
 from threading import Thread
 
-from spotify import (
+from external_services.spotify import (
     SpotifyInfo,
     SpotifySong,
     Author
@@ -25,6 +23,7 @@ from exceptions import (
     SpotifyExtractError,
     YTDLError
 )
+from external_services.genius import GeniusInfo
 
 
 class SongGenerator:
@@ -75,6 +74,7 @@ class SongGenerator:
         self.yt_link: str | None          = None
         self.color: int | None            = None
         self.source: str | None           = None
+        self.lyrics: str | None           = None
         self.is_good: bool                = True
 
         if isinstance(query, str):
@@ -156,6 +156,16 @@ class SongGenerator:
         # todo: format to discord in message update, not in song gen
         self.color = discord.Color.from_rgb(*color)
 
+    def set_lyrics(self) -> None:
+        # todo: test errors
+        if self.lyrics is None:
+            try:
+                self.lyrics = GeniusInfo.get_lyrics(self.author.name, self.name)
+            except AttributeError:
+                self.lyrics = 'No lyrics found for this song.'
+        else:
+            return
+
     def to_msg_format(self) -> str:
         authors = ''.join(author.name + ', ' for author in self.authors).strip(', ')
         return f'{authors} - {self.name} ({self.timedelta_duration_to_str()})'
@@ -188,7 +198,13 @@ class SongGenerator:
 
     @classmethod
     def get_song_gens(cls, query: str):
-        songs = SpotifyInfo.get_playlist(query)
+        # todo: decide where this if should be
+        songs = []
+        if 'https://open.spotify.com/album/' in query:
+            songs = SpotifyInfo.get_album(query)
+        elif 'https://open.spotify.com/playlist/' in query:
+            songs = SpotifyInfo.get_playlist(query)
+
         lst = [SongGenerator(song) for song in songs]
         return filter(cls.check_if_good, lst)
 
