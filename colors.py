@@ -1,4 +1,7 @@
-# last changed 05/12/22
+# last changed 23/12/22
+# timestamp printed with log
+# -> not needed to print timestamp separately
+# fixed a bug
 
 from datetime import datetime
 
@@ -32,7 +35,7 @@ class Colors:
 
 
 def c_login():
-    return f'{Colors.GREEN}{"LOGGED IN":<20}{Colors.END}'
+    return f'{c_time()} {Colors.GREEN}{"LOGGED IN":<20}{Colors.END}'
 
 
 def c_guild(guild: int):
@@ -49,7 +52,7 @@ def c_time():
 
 
 def c_event(event: str):
-    return f'{Colors.LIGHT_CYAN}{event:<20}{Colors.END}'
+    return f'{c_time()} {Colors.LIGHT_CYAN}{event:<20}{Colors.END}'
 
 
 def c_user(user: int):
@@ -57,4 +60,4 @@ def c_user(user: int):
 
 
 def c_err():
-    return f'{Colors.RED}{"ERROR":<20}{Colors.END}'
+    return f'{c_time()} {Colors.RED}{"ERROR":<20}{Colors.END}'

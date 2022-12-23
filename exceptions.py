@@ -1,7 +1,8 @@
-# last changed 05/12/22
+# last changed 12/12/22
+# moved timestamp print to colors.py
 
 from colors import *
-# TODO: log file?
+# todo: log file?
 
 
 class FailedToConnectError(Exception):
@@ -27,11 +28,12 @@ class InteractionFailedError(Exception):
 
 class YTDLError(Exception):
     def __init__(self, query):
-        print(f'{c_time()} {c_err()} failed to extract info for: {query}')
+        print(f'{c_err()} failed to extract info for: {query}')
 
 
 class SpotifyExtractError(Exception):
     def __init__(self, err=None):
         if err:
+            # todo: prints error wrong
             code = err['error'] if 'error' in err.keys() else err['status']
-            print(f'{c_time()} {c_err()} Spotify API error code {code}')
+            print(f'{c_err()} Spotify API error code {code}')
