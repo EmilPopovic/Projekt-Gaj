@@ -21,7 +21,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # added a comment about the structure of a command function
 # changed formatting from one blank line between functions to two
 # typehints on voice channel objects
-# todo: check requirements.txt
 
 import sys
 
