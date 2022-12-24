@@ -15,10 +15,13 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-# last changed 22/12/22
-# added toggle lyrics command
-# moved timestamp print to colors.py
-# renamed MainBot.music_cogs to MainBot.guild_bots
+# last changed 24/12/22
+# changed 'Adding song...' to 'Adding song(s)...'
+# changed some command descriptions and names
+# added a comment about the structure of a command function
+# changed formatting from one blank line between functions to two
+# typehints on voice channel objects
+# todo: check requirements.txt
 
 import sys
 
@@ -51,20 +54,21 @@ class MainBot(commands.AutoShardedBot):
         @self.tree.command(name = 'play', description = 'Adds a song/list to queue.')
         @app_commands.describe(song = 'The name or link of song/list.')
         async def play(interaction: discord.Interaction, song: str) -> None:
+            # todo: add optional insert argument that would add the song to the specified place in queue
             """If user calling the command is in a voice channel, adds wanted song/list to queue of that guild."""
             guild_bot = self.guild_bots[interaction.guild.id]
 
-            user_vc = interaction.user.voice
-            bot_vc: int | None = guild_bot.vc.channel.id if guild_bot.vc else None
+            user_voice_state: discord.VoiceState | None = interaction.user.voice
+            bot_vc_id: int | None = guild_bot.voice_client.channel.id if guild_bot.voice_client is not None else None
 
             # if user is not in a voice channel
-            if user_vc is None:
+            if user_voice_state is None:
                 await interaction.response.send_message(
                     'Connect to a voice channel to play songs!',
                     ephemeral = True)
                 return
             # if user is in a different voice channel than the bot
-            elif bot_vc and user_vc.channel.id != bot_vc:
+            elif bot_vc_id and user_voice_state.channel.id != bot_vc_id:
                 await interaction.response.send_message(
                     'You are not in the same voice channel as the bot.',
                     ephemeral = True)
@@ -72,18 +76,25 @@ class MainBot(commands.AutoShardedBot):
             # if user is in a voice channel with the bot
             else:
                 # TODO: send empty response
-                await interaction.response.send_message('Adding song...', ephemeral = True)
+                await interaction.response.send_message('Adding song(s)...', ephemeral = True)
 
                 command = guild_bot.queue_command
-                args = song, user_vc.channel
+                args = song, user_voice_state.channel
                 # todo: use guild_bot.queue_command(...)
-                # await guild_bot.queue_command(command, *args)
-                await guild_bot.add_to_queue(song, user_vc.channel)
+                # await guild_bot.queue_command(command, song, user_voice_state)
+                await guild_bot.add_to_queue(song, user_voice_state.channel)
 
-        # todo: command function structure docstring
         # todo: command names and descriptions
 
-        @self.tree.command(name = 'skip', description = 'Skips currently playing song and plays next in queue.')
+        # the structure of most commands is the same
+        # we get the guild_bot that the command should be executed in
+        # then we run the command if user is in a voice channel with the bot
+        # if the command is executed successfully, a confirmation message is sent
+        # if the command fails to execute, nothing is done
+        # because a message has already been sent from the
+        # run_if_user_with_bot function
+
+        @self.tree.command(name = 'skip', description = 'Skips to the next queued song.')
         async def skip(interaction: discord.Interaction) -> None:
             """Skips to next song in queue."""
             guild_bot = self.guild_bots[interaction.guild.id]
@@ -94,8 +105,9 @@ class MainBot(commands.AutoShardedBot):
             else:
                 await interaction.response.send_message('Skipped song.', ephemeral = True)
 
-        @self.tree.command(name = 'loop', description = 'Loops music queue or single song.')
-        async def loop(interaction: discord.Interaction):
+
+        @self.tree.command(name = 'loop', description = 'Loops queue or single song.')
+        async def loop(interaction: discord.Interaction) -> None:
             """Loops the following queue including the current song (but not the history)."""
             guild_bot = self.guild_bots[interaction.guild.id]
             try:
@@ -105,7 +117,8 @@ class MainBot(commands.AutoShardedBot):
             else:
                 await interaction.response.send_message('Toggled loop.', ephemeral = True)
 
-        @self.tree.command(name = 'clear', description = 'Clears music queue and history, stops playing.')
+
+        @self.tree.command(name = 'clear', description = 'Clears queue and history, stops playing.')
         async def clear(interaction: discord.Interaction) -> None:
             """Loops the current song."""
             guild_bot = self.guild_bots[interaction.guild.id]
@@ -116,8 +129,9 @@ class MainBot(commands.AutoShardedBot):
             else:
                 await interaction.response.send_message('Queue cleared.', ephemeral = True)
 
+
         @self.tree.command(name = 'dc', description = 'Disconnects bot from voice channel.')
-        async def dc(interaction: discord.Interaction) -> None:
+        async def disconnect(interaction: discord.Interaction) -> None:
             """Disconnects bot from voice channel."""
             guild_bot = self.guild_bots[interaction.guild.id]
             try:
@@ -126,6 +140,7 @@ class MainBot(commands.AutoShardedBot):
                 pass
             else:
                 await interaction.response.send_message('Bot disconnected.', ephemeral = True)
+
 
         @self.tree.command(name = 'previous', description = 'Skips current song and plays previous.')
         async def previous(interaction: discord.Interaction) -> None:
@@ -138,8 +153,10 @@ class MainBot(commands.AutoShardedBot):
             else:
                 await interaction.response.send_message('Went to previous song.', ephemeral = True)
 
+
         @self.tree.command(name = 'queue', description = 'Toggles queue display type (short/long).')
         async def queue(interaction: discord.Interaction) -> None:
+            # todo: see how this behaves when ui button behaviour is changed
             """Swaps queue display type. (short/long)"""
             guild_bot = self.guild_bots[interaction.guild.id]
             try:
@@ -149,8 +166,10 @@ class MainBot(commands.AutoShardedBot):
             else:
                 await interaction.response.send_message('Queue display toggled.', ephemeral = True)
 
+
         @self.tree.command(name = 'history', description = 'Toggles history display type (show/hide).')
         async def history(interaction: discord.Interaction) -> None:
+            # todo: see how this behaves when ui button behaviour is changed
             """Swaps history display type. (show/hide)."""
             guild_bot = self.guild_bots[interaction.guild.id]
             try:
@@ -160,8 +179,9 @@ class MainBot(commands.AutoShardedBot):
             else:
                 await interaction.response.send_message('History display toggled.', ephemeral = True)
 
+
         @self.tree.command(name = 'toggle_lyrics', description = 'Toggles lyrics display (show/hide).')
-        async def toggle_lyrics(interaction: discord.Interaction) -> None:
+        async def lyrics(interaction: discord.Interaction) -> None:
             """Swaps history display type. (show/hide)."""
             guild_bot = self.guild_bots[interaction.guild.id]
             try:
@@ -170,6 +190,7 @@ class MainBot(commands.AutoShardedBot):
                 pass
             else:
                 await interaction.response.send_message('Lyrics display toggled.', ephemeral = True)
+
 
         @self.tree.command(name = 'shuffle', description = 'Toggles queue shuffle.')
         async def shuffle(interaction: discord.Interaction):
@@ -182,7 +203,8 @@ class MainBot(commands.AutoShardedBot):
             else:
                 await interaction.response.send_message('Shuffle toggled.', ephemeral = True)
 
-        @self.tree.command(name = 'swap', description = 'Swap places of two queued songs.')
+
+        @self.tree.command(name = 'swap', description = 'Swap places of queued songs.')
         @app_commands.describe(song1 = 'Place of first song in queue.', song2 = 'Place of second song in the queue.')
         async def swap(interaction: discord.Interaction, song1: int, song2: int) -> None:
             """
@@ -192,6 +214,8 @@ class MainBot(commands.AutoShardedBot):
             """
             # indexes must be greater than 0
             if song1 <= 0 or song2 <= 0:
+                # todo: what if it could be <= 0?
+                # todo: i.e. bring a song back from history
                 await interaction.response.send_message(
                     'Queue index cannot be less than or equal to 0.',
                     ephemeral = True)
@@ -203,10 +227,11 @@ class MainBot(commands.AutoShardedBot):
                     ephemeral = True)
                 return
 
+            # todo: check this when executing command
             # checking if inputs are valid numbers
             # inputs are valid if both exist in queue
             guild_bot = self.guild_bots[interaction.guild.id]
-            queue_len = len(guild_bot.music_queue[guild_bot.p_index + 1:])
+            queue_len = len(guild_bot.queue[guild_bot.p_index + 1:])
 
             if song1 > queue_len or song2 > queue_len:
                 await interaction.response.send_message(
@@ -218,8 +243,10 @@ class MainBot(commands.AutoShardedBot):
                 await self.run_if_user_with_bot(interaction, guild_bot, guild_bot.swap, song1, song2)
             except InteractionFailedError:
                 pass
+            # todo: add CommandExecutionError
             else:
                 await interaction.response.send_message('Songs swapped.', ephemeral = True)
+
 
         @self.tree.command(name = 'pause', description = 'Pauses or unpauses playing.')
         async def pause(interaction: discord.Interaction) -> None:
@@ -234,10 +261,12 @@ class MainBot(commands.AutoShardedBot):
             else:
                 await interaction.response.send_message('Player paused.', ephemeral = True)
 
+
     @staticmethod
     async def run_if_user_with_bot(interaction, guild_bot, func, *args) -> None:
         # todo: docstring
         # todo: check if guild_bot command or player command maybe?
+        # todo: this is broken lol
         try:
             user_with_bot_check(interaction, guild_bot)
 
@@ -264,16 +293,19 @@ class MainBot(commands.AutoShardedBot):
 
         await guild_bot.queue_command(func, *args)
 
+
     async def on_guild_join(self, guild) -> None:
-        # TODO: test
+        # TODO: test, probably doesn't work
         """Creates GuildBot if bot joins a guild while running."""
         await self.add_guild(guild)
+
 
     async def add_guild(self, guild: discord.guild.Guild) -> GuildBot:
         """Creates a GuildBot object for specific guild."""
         guild_bot = await GuildBot.create_guild_bot(bot = self, guild = guild)
         print(f'{c_event("ADDED GUILD")} {c_guild(guild.id)} with channel {c_channel(guild_bot.bot_channel_id)}')
         return guild_bot
+
 
     async def on_ready(self) -> None:
         """
