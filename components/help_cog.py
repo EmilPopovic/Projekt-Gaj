@@ -1,31 +1,31 @@
-# last changed 23/12/22
+# last changed 25/12/22
+# started changes
 # todo: rewrite all of this
 
+import discord
 from discord.ext import commands
 
 
 class HelpCog(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-
-        self.help_message = '''
-```
-Commands:
-/help - prints all commands
-/p <song> - traži pjesmu na youtubeu i pušta ju u glasovni kanal, nastavlja ako pauzirano
-/q - prikazuje sadašnji popis
-/h - prikazuje popis puštenih pjesama
-/skip - preskače pjesmu
-/clear - prestaje i briše popis
-/leave - bot izlazi iz glasovnog kanala
-/pause - pauzira sadašnju pjesmu, nastavlja ako pauzirano
-/resume - nastavlja ako pauzirano
-/dq - briše sve odgovore na !q poruke
-/dh - briše sve odgovore na !h poruke
-```
+    # todo: docstring
+    # todo: finish help message
+    help_message = '''
+`/clear   ` - Clears queue and history, stops playing.
+`/dc      ` - Disconnects bot from voice channel.
+`/history ` - Toggles history display type (show/hide).
+`/loop    ` - Loops queue or single song.
+`/pause   ` - Pauses or unpauses playing.
+`/play    ` - Adds a song/list to queue.
+`/previous` - Skips current song and plays previous.
+`/queue   ` - Toggles queue display type (short/long).
+`/shuffle ` - Toggles queue shuffle.
+`/skip    ` - Skips to the next queued song.
+`/swap    ` - Swap places of queued songs.
+`/lyrics  ` - Toggles lyrics display (show/hide).
 '''
+    bot = None
 
-    @commands.command(name='help', help='ispisuje sve komande')
-    async def help(self, ctx):
-        await ctx.channel.purge(limit=1)
-        await ctx.send(self.help_message)
+
+    @staticmethod
+    async def command(interaction: discord.Interaction):
+        await interaction.response.send_message(content = HelpCog.help_message, ephemeral = True)

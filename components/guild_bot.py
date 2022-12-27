@@ -3,10 +3,15 @@ This file is part of Shteff which is released under the GNU General Public Licen
 See file LICENSE or go to <https://www.gnu.org/licenses/gpl-3.0.html> for full license details.
 """
 
-# last changed 23/12/22
-# update_msg now takes color in (r, g, b) format, instead of discord
-# changed formatting from one blank line between functions to two
-# set default color as class variable
+# last changed 26/12/22
+# small formatting changes
+# update_msg() docstring
+# fuck it, all the docstrings, provided by ChatGPT
+# changed char limit to 1800
+# added default_embed class variable
+# creating new command message if the last one was deleted
+# GuildBot.bot only set once
+# lyrics now moved to separate message
 
 from os import fdopen, remove
 from shutil import move, copymode
@@ -30,21 +35,31 @@ class GuildBot(Player):
     """
     docstring
     """
-    # MainBot instance GuildBot instance is in
+
     bot = None
+
     default_color = 0xf1c40f
+    default_embed = discord.Embed(
+        title = 'Welcome to Shteff!',
+        description = 'Use /play to add more songs to queue.',
+        color = default_color
+    )
 
 
-    def __init__(self, bot, guild: discord.guild.Guild):
+    def __init__(self, guild: discord.guild.Guild):
+        # initialize player for specified guild
         super().__init__(self, guild)
-        GuildBot.bot = bot
         self.guild: discord.guild.Guild = guild
 
-        # id of command message
-        self.command_message: discord.Message | None = None
+        # info about discord objects bot will be interacting with
+        self.command_channel_id:              int | None = None
+        self.command_channel: discord.TextChannel | None = None
+        self.command_message:     discord.Message | None = None
+        self.lyrics_message:      discord.Message | None = None
 
-        self.show_lyrics = False
-        self.short_queue = False
+        # set default flags
+        self.show_lyrics  = False
+        self.short_queue  = False
         self.show_history = False
 
         # todo: make queue display toggling a single button
@@ -55,40 +70,60 @@ class GuildBot(Player):
     # async part of __init__
     async def __init_async__(self) -> None:
         """
-        Is part of __init__ function.
+        Should only be used after __init__ function.
+        Must be called after __init__, object is not valid if not called.
         Initiates command channel and command message.
         Clears existing command channel on bot start or cog reset.
         """
+        # todo: call this from __init__
+        # todo: make private method
         # TODO: store ids in SQL database
-        self.bot_channel_id = await GuildBot.get_id(self.guild)
-
-        # clear command channel on start
-        await GuildBot.bot.get_channel(self.bot_channel_id).purge(limit = 1)
-
-        # start and update new live message
-        embed = discord.Embed(
-            title = 'Welcome to Shteff!',
-            description = 'Use /play to add more songs to queue.',
-            color = 0xf1c40f
-        )
-
-        self.command_message = await GuildBot.bot.get_channel(self.bot_channel_id).send(embed = embed, view = Buttons())
+        # set up command channel
+        self.command_channel_id = await self.get_id(self.guild)
+        self.command_channel = self.bot.get_channel(self.command_channel_id)
+        # create a new live message
+        await self.create_live_msg()
 
 
-    def reset_bot_states(self) -> None:
-        super().reset_bot_states()
-        self.show_lyrics = False
-        self.short_queue = False
+    async def create_live_msg(self):
+        # clear command channel
+        await self.command_channel.purge(limit = 10)
+        # start a new live message
+        self.command_message = await self.command_channel.send(embed = self.default_embed, view = Buttons())
+        # update message
+        await self.update_msg()
+
+
+    def reset_flags(self) -> None:
+        self.show_lyrics  = False
+        self.short_queue  = False
         self.show_history = False
 
 
     async def update_msg(self) -> None:
-        # TODO: finish docstring
-        """Refreshes command message according to current bot states, lists and playing status."""
+        """
+        Refreshes the command message to display the current bot states, lists, and playing status.
+
+        The message will show the history of songs that have already been played, and the current queue of
+        songs that are waiting to be played. If the bot is currently playing or paused, the message will also
+        include an embed with information about the current song.
+
+        The history section of the message will display the most recent songs played, up to the current song.
+        The queue section of the message will display the upcoming songs in the order that they will be played.
+        If the `short_queue` flag is set, only the next five songs in the queue will be shown. If there are
+        more songs in the queue than are shown, a message will be included indicating the number of additional
+        songs that are not shown.
+
+        The embed will include the title, artist, and duration of the current song, as well as a progress bar
+        showing the current position in the song. The embed will also use the color of the current song for
+        its background.
+        """
         # message content
         # todo: make history display a 50/50 split between history and queue
         # todo: maybe add a mode where songs are shown in order and the current song is bold
         # todo: if that is made, make list showing buttons a single button that loops through possible display modes
+        # todo: adjust docstring when behaviour changed
+        # todo: adjust docstring after lyrics moved to separate message
         # TODO: show playing progress bar
         content = ''
 
@@ -113,7 +148,7 @@ class GuildBot(Player):
             song_strs: list[str] = []
 
             # God save me
-            while i < len(self.queue) and content_len < 1500:
+            while i < len(self.queue) and content_len < 1800:
                 if self.short_queue and i - self.p_index >= 5:
                     break
                 song = self.queue[i]
@@ -129,19 +164,20 @@ class GuildBot(Player):
                 content += f'And **{not_shown}** more...\n\n'
             content += ''.join(song_strs[::-1])
 
-        # embed
-
         if self.queue[self.p_index:] and self.is_playing or self.is_paused:
             current = self.queue[self.p_index]
+
+            # create embed
+            if current.color:
+                color = discord.Color.from_rgb(*current.color)
+            else:
+                color = self.default_color
 
             embed = discord.Embed(
                 title = 'Welcome to Shteff!',
                 description = 'Use /play to add more songs to queue.',
-                color = discord.Color.from_rgb(*current.color)
+                color = color
             )
-
-            embed.set_author(name = current.author.name)
-            # TODO: add author icon_url to embed.set_author()
 
             embed.add_field(
                 name = 'Currently playing:',
@@ -154,14 +190,6 @@ class GuildBot(Player):
                 value = f'{current.timedelta_duration_to_str()}',
                 inline = False
             )
-            # TODO: maybe add release year inline with duration?
-
-            if self.show_lyrics:
-                embed.add_field(
-                    name = 'Lyrics',
-                    value = current.lyrics[:1024],
-                    inline = False
-                )
 
             embed.add_field(
                 name = 'Track links:',
@@ -171,30 +199,45 @@ class GuildBot(Player):
 
             embed.add_field(
                 name = 'Author links:',
-                value = ''.join(author.print_with_url_format(new_line = True)
-                                for author in current.authors),
+                value = ''.join(author.print_with_url_format(new_line = True) for author in current.authors),
                 inline = True
             )
 
-            embed.set_thumbnail(url = current.thumbnail_link)
+            if current.thumbnail_link is not None:
+                embed.set_thumbnail(url = current.thumbnail_link)
 
             embed.set_footer(text = 'We do not guarantee the accuracy of the data provided.')
 
+            # set lyrics message
+            if self.show_lyrics:
+                # todo: lyrics button returns to grey when queue cleared but works as expected
+                lyrics_msg_content = f'**Lyrics:\n\n**{current.lyrics}\n\n'
+                if self.lyrics_message is None:
+                    if len(lyrics_msg_content) > 1900:
+                        lyrics_msg_content = lyrics_msg_content[:1900]
+                        lyrics_msg_content += '\n*Only the first 2000 characters of the lyrics can be displayed.*\n'
+                    lyrics_msg_content += '*Lyrics provided by Genius.*'
+
+                    self.lyrics_message = await self.command_channel.send(content = lyrics_msg_content)
+                else:
+                    await self.lyrics_message.edit(content = lyrics_msg_content)
+
         else:
             # set idle embed
-            embed = discord.Embed(
-                title = 'Welcome to Shteff!',
-                description = 'Use /play to add more songs to queue.',
-                color = self.default_color
-            )
+            embed = self.default_embed
             embed.set_footer(text = '')
+            await self.delete_lyrics_message()
 
-        # edit message with generated elements
-        await self.command_message.edit(
-            content = content,
-            embed = embed,
-            view = Buttons()
-        )
+        try:
+            # edit message with generated elements
+            await self.command_message.edit(
+                content = content,
+                embed = embed,
+                view = Buttons()
+            )
+        except discord.errors.NotFound:
+            # create a new message if last one was deleted
+            await self.create_live_msg()
 
 
     async def toggle_queue(self) -> None:
@@ -223,15 +266,39 @@ class GuildBot(Player):
         # todo: function call needs to be added to command queue
         if self.show_lyrics:
             self.show_lyrics = False
+            await self.delete_lyrics_message()
         else:
             self.show_lyrics = True
-            current = self.queue[self.p_index]
-            current.set_lyrics()
         await self.update_msg()
+
+
+    async def delete_lyrics_message(self) -> None:
+        if self.lyrics_message is None:
+            return
+
+        await self.lyrics_message.delete()
+        self.lyrics_message = None
 
 
     @staticmethod
     async def get_id(guild: discord.guild.Guild) -> int:
+        """
+        Retrieves the ID of the command channel for the given guild.
+
+        If a command channel has previously been set for the guild, the ID of that channel will
+        be returned. If no command channel has been set, a new text channel will be created for the
+        guild and the ID of the new channel will be returned.
+
+        If the previously set command channel no longer exists in the guild, a new channel will
+        be created and the ID of the new channel will be returned. The ID of the old channel will be
+        replaced with the ID of the new channel in the database.
+
+        Parameters:
+        guild (discord.guild.Guild): The guild for which to retrieve the command channel ID.
+
+        Returns:
+        int: The ID of the command channel for the given guild.
+        """
         replaced = False
         guild_id = guild.id
 
@@ -271,11 +338,25 @@ class GuildBot(Player):
 
     @staticmethod
     async def replace_command_channel(guild: discord.guild.Guild, new_id: int) -> dict:
-        """For a specified guild, replaces existing command channel id with new_id in channel_ids.txt."""
+        """
+        Creates a new command channel for the given guild and returns information about the replacement.
+
+        If the previously set command channel for the guild no longer exists, this method creates a new
+        text channel for the guild and returns a dictionary with the ID of the new channel, the pattern to
+        search for in the database, and the substitution to make.
+
+        Parameters:
+        guild (discord.guild.Guild): The guild for which to create a new command channel.
+        new_id (int): The ID of the old command channel that has been deleted.
+
+        Returns:
+        dict: A dictionary containing the ID of the new command channel, the pattern to search for
+            in the database, and the substitution to make.
+        """
         channel = await guild.create_text_channel('shteffs-disco')
         channel_id = channel.id
 
-        print(f'Command channel deleted, {c_event("CREATED CHANNEL")} {c_channel(channel_id)}')
+        print(f'{c_event("CREATED CHANNEL")} {c_channel(channel_id)}, previous command channel deleted')
 
         return {'pattern': f'{new_id}', 'subst': f'{channel_id}', 'id': channel_id}
 
@@ -298,25 +379,29 @@ class GuildBot(Player):
 
 
     @staticmethod
-    async def create_guild_bot(bot, guild: discord.guild.Guild):
+    async def create_guild_bot(guild: discord.guild.Guild):
         """
-        Creates a GuildBot object for guild with id guild_id.
+        Creates a GuildBot object for guild.
+
         A GuildBot is only created by calling this function, not by directly declaring an instance.
-        After creating the instance, __init_async__() is called, that contains async commands needed for initialization.
+        After creating the instance, __init_async__() is called,
+        that contains async commands needed for initialization.
         """
-        m_cog = GuildBot(bot, guild)
+        m_cog = GuildBot(guild)
         await m_cog.__init_async__()
         return m_cog
 
 
 class BtnStyle:
-    grey = discord.ButtonStyle.grey
+    grey  = discord.ButtonStyle.grey
     green = discord.ButtonStyle.green
-    red = discord.ButtonStyle.red
-    link = discord.ButtonStyle.link
+    red   = discord.ButtonStyle.red
+    link  = discord.ButtonStyle.link
 
 
 class Buttons(discord.ui.View):
+    # todo: docstring
+    # todo: move to another file maybe?
     def __init__(self, timeout=180):
         super().__init__(timeout = timeout)
 

@@ -3,13 +3,10 @@ This file is part of Shteff which is released under the GNU General Public Licen
 See file LICENSE or go to <https://www.gnu.org/licenses/gpl-3.0.html> for full license details.
 """
 
-# last changed 23/12/22
-# set_lyrics now uses a guard clause
-# set_source and set_color use guard clauses
-# checking if source and color were set removed from get function
-# changed color formatting to (r, g, b) instead of discord format
-# removed unused import
-# changed formatting to two blank lines between methods instead of one
+# last changed 26/12/22
+# added `get_songs` method that returns a list with all songs requested
+# `get_song_gens` method is now obsolete
+
 
 from colorthief import ColorThief
 from requests import get
@@ -55,7 +52,32 @@ class SongGenerator:
     }
 
     # unique identifier of a SongGenerator object
-    ind = 0
+    last_uid = 0
+
+    @staticmethod
+    def get_songs(query: str) -> list:
+        lst: list[SongGenerator] = []
+
+        if 'https://open.spotify.com/track/' in query:
+            lst = [SongGenerator(query)]
+
+        elif 'https://open.spotify.com/album/' in query:
+            lst = [SongGenerator(song) for song in SpotifyInfo.get_album(query)]
+
+        elif 'https://open.spotify.com/playlist/' in query:
+            lst = [SongGenerator(song) for song in SpotifyInfo.get_playlist(query)]
+
+        elif 'https://open.spotify.com/artist/' in query:
+            lst = [SongGenerator(song) for song in SpotifyInfo.get_artist(query)]
+
+        else:
+            lst.extend([SongGenerator(query)])
+
+        return list(filter(SongGenerator.check_if_good, lst))
+
+
+    def check_if_good(self) -> bool:
+        return self.is_good
 
 
     def __init__(self, query):
@@ -65,8 +87,8 @@ class SongGenerator:
         # the uid attribute makes every instance of Song class
         # unique even if identical data is stored
         # used to determine the order of songs being added
-        self.uid = SongGenerator.ind
-        SongGenerator.ind += 1
+        self.uid = SongGenerator.last_uid
+        SongGenerator.last_uid += 1
 
         # initialize attributes
         self.name: str | None             = None
@@ -123,15 +145,20 @@ class SongGenerator:
         # todo: set color and source for songs in background
         source_thread = Thread(target = self.set_source, args = ())
         color_thread = Thread(target = self.set_color, args = ())
+        lyrics_thread = Thread(target = self.set_lyrics, args = ())
 
         source_thread.start()
         color_thread.start()
+        lyrics_thread.start()
+
         source_thread.join()
         color_thread.join()
+        lyrics_thread.join()
 
         return {
             'source': self.source,
-            'color': self.color
+            'color': self.color,
+            'lyrics': self.lyrics
         }
 
 
@@ -152,6 +179,8 @@ class SongGenerator:
 
     def set_color(self) -> None:
         if self.color is not None:
+            return
+        if self.thumbnail_link is None:
             return
 
         # get image from url
@@ -203,23 +232,6 @@ class SongGenerator:
             'title': info['title'],
             'id': info['id']
         }
-
-
-    def check_if_good(self) -> bool:
-        return self.is_good
-
-
-    @classmethod
-    def get_song_gens(cls, query: str):
-        # todo: decide where this if should be
-        songs = []
-        if 'https://open.spotify.com/album/' in query:
-            songs = SpotifyInfo.get_album(query)
-        elif 'https://open.spotify.com/playlist/' in query:
-            songs = SpotifyInfo.get_playlist(query)
-
-        lst = [SongGenerator(song) for song in songs]
-        return filter(cls.check_if_good, lst)
 
 
     def __eq__(self, other) -> bool:
