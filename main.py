@@ -15,12 +15,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-# last changed 24/12/22
-# changed 'Adding song...' to 'Adding song(s)...'
-# changed some command descriptions and names
-# added a comment about the structure of a command function
-# changed formatting from one blank line between functions to two
-# typehints on voice channel objects
+# last changed 26/12/22
+# accidentally changed command name, now fixed
+# play function now takes an optional arg `number` which is used to insert the song in the middle of the queue
+
 
 import sys
 
@@ -48,11 +46,12 @@ class MainBot(commands.AutoShardedBot):
     # TODO: docstring
     def __init__(self, intents=discord.Intents.all()):
         super().__init__(command_prefix = '!', intents = intents)
+        GuildBot.bot = self
         self.guild_bots = {}
 
         @self.tree.command(name = 'play', description = 'Adds a song/list to queue.')
         @app_commands.describe(song = 'The name or link of song/list.')
-        async def play(interaction: discord.Interaction, song: str) -> None:
+        async def play(interaction: discord.Interaction, song: str, number: int = None) -> None:
             # todo: add optional insert argument that would add the song to the specified place in queue
             """If user calling the command is in a voice channel, adds wanted song/list to queue of that guild."""
             guild_bot = self.guild_bots[interaction.guild.id]
@@ -75,13 +74,21 @@ class MainBot(commands.AutoShardedBot):
             # if user is in a voice channel with the bot
             else:
                 # TODO: send empty response
-                await interaction.response.send_message('Adding song(s)...', ephemeral = True)
+                if number is not None and number <= 0:
+                    number = None
+                    await interaction.response.send_message(
+                        'Cannot add song to history, adding to end of queue',
+                        ephemeral = True
+                    )
+                else:
+                    await interaction.response.send_message('Adding song(s)...', ephemeral = True)
 
-                command = guild_bot.queue_command
-                args = song, user_voice_state.channel
+                # command = guild_bot.queue_command
+                # args = song, user_voice_state.channel
                 # todo: use guild_bot.queue_command(...)
                 # await guild_bot.queue_command(command, song, user_voice_state)
-                await guild_bot.add_to_queue(song, user_voice_state.channel)
+
+                await guild_bot.add_to_queue(song, user_voice_state.channel, number)
 
         # todo: command names and descriptions
 
@@ -179,7 +186,7 @@ class MainBot(commands.AutoShardedBot):
                 await interaction.response.send_message('History display toggled.', ephemeral = True)
 
 
-        @self.tree.command(name = 'toggle_lyrics', description = 'Toggles lyrics display (show/hide).')
+        @self.tree.command(name = 'lyrics', description = 'Toggles lyrics display (show/hide).')
         async def lyrics(interaction: discord.Interaction) -> None:
             """Swaps history display type. (show/hide)."""
             guild_bot = self.guild_bots[interaction.guild.id]
@@ -299,10 +306,11 @@ class MainBot(commands.AutoShardedBot):
         await self.add_guild(guild)
 
 
-    async def add_guild(self, guild: discord.guild.Guild) -> GuildBot:
+    @staticmethod
+    async def add_guild(guild: discord.guild.Guild) -> GuildBot:
         """Creates a GuildBot object for specific guild."""
-        guild_bot = await GuildBot.create_guild_bot(bot = self, guild = guild)
-        print(f'{c_event("ADDED GUILD")} {c_guild(guild.id)} with channel {c_channel(guild_bot.bot_channel_id)}')
+        guild_bot = await GuildBot.create_guild_bot(guild = guild)
+        print(f'{c_event("ADDED GUILD")} {c_guild(guild.id)} with channel {c_channel(guild_bot.command_channel_id)}')
         return guild_bot
 
 
