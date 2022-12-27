@@ -3,9 +3,10 @@ This file is part of Shteff which is released under the GNU General Public Licen
 See file LICENSE or go to <https://www.gnu.org/licenses/gpl-3.0.html> for full license details.
 """
 
-# last changed 07/12/22
-# added typehints and optimizing imports
-# Author and SpotifySong converted to dataclasses
+# last changed 26/12/22
+# formatting changes
+# removed thumbnail_url from artist
+# started working on artist and album links
 
 from requests import get, post
 from datetime import timedelta
@@ -17,15 +18,9 @@ from exceptions import SpotifyExtractError
 
 @dataclass
 class Author:
-    def __init__(
-            self,
-            name,
-            url=None,
-            thumbnail_url=None
-    ):
+    def __init__(self, name, url):
         self.name = name
         self.url = url
-        self.thumbnail_url = thumbnail_url
 
     def print_with_url_format(self, new_line=False) -> str:
         name_with_url = f'[{self.name}]({self.url})'
@@ -62,8 +57,15 @@ class SpotifyInfo:
     # TODO: refresh token in regular intervals?
     spotify_token = ''
 
+
+    @staticmethod
+    def spotify_get(query) -> list[SpotifySong]:
+        return []
+
+
     def __init__(self) -> None:
         pass
+
 
     @classmethod
     def get_track(cls, url: str) -> SpotifySong:
@@ -75,7 +77,6 @@ class SpotifyInfo:
         track_id = url.split('track/')[1].split('?')[0]
         json = cls.get_response(f'https://api.spotify.com/v1/tracks/{track_id}')
 
-        # TODO: extract author thumbnail_url
         try:
             song = SpotifySong(
                 name = json['name'],
@@ -83,8 +84,7 @@ class SpotifyInfo:
                 authors = [
                     Author(
                         name = author['name'],
-                        url = author['external_urls']['spotify'],
-                        thumbnail_url = None
+                        url = author['external_urls']['spotify']
                     )
                     for author in json['artists']
                 ],
@@ -96,6 +96,7 @@ class SpotifyInfo:
         except KeyError:
             raise SpotifyExtractError(json)
 
+
     @classmethod
     def search_spotify(cls, query: str) -> SpotifySong:
         cls.call_refresh()
@@ -103,7 +104,6 @@ class SpotifyInfo:
         query = f'https://api.spotify.com/v1/search?q={query.replace(" ", "%20")}&type=track&limit=1&offset=0'
         json = cls.get_response(query)
 
-        # TODO: extract author thumbnail_url
         try:
             item = json['tracks']['items'][0]
 
@@ -113,8 +113,7 @@ class SpotifyInfo:
                 authors = [
                     Author(
                         name = author['name'],
-                        url = author['external_urls']['spotify'],
-                        thumbnail_url = None
+                        url = author['external_urls']['spotify']
                     )
                     for author in item['artists']
                 ],
@@ -125,9 +124,9 @@ class SpotifyInfo:
         except KeyError:
             raise SpotifyExtractError(json)
 
+
     @classmethod
-    def songs_from_album(cls, url: str) -> list[SpotifySong]:
-        # TODO: rewrite to send one request
+    def get_album(cls, url: str) -> list[SpotifySong]:
         cls.call_refresh()
 
         if 'album/' not in url:
@@ -136,14 +135,30 @@ class SpotifyInfo:
         query = f'https://api.spotify.com/v1/albums/{url.split("album/")[1].split("?")[0]}/tracks'
         json = cls.get_response(query)
 
+        print(json)
+
         try:
+            # todo: get `thumbnail_url`
             return [
-                item['external_urls']['spotify']
+                SpotifySong(
+                    name = item['name'],
+                    url =  item['external_urls']['spotify'],
+                    authors = [
+                        Author(
+                            name = author['name'],
+                            url = author['external_urls']['spotify']
+                        )
+                        for author in item['artists']
+                    ],
+                    thumbnail_url = None,
+                    duration = timedelta(milliseconds = item['duration_ms'])
+                )
                 for item in json['items']
             ]
 
         except KeyError:
             raise SpotifyExtractError(json)
+
 
     @classmethod
     def get_playlist(cls, url: str) -> list[SpotifySong]:
@@ -161,8 +176,7 @@ class SpotifyInfo:
                     authors = [
                         Author(
                             name = author['name'],
-                            url = author['external_urls']['spotify'],
-                            thumbnail_url = ''
+                            url = author['external_urls']['spotify']
                         )
                         for author in item['track']['artists']
                     ],
@@ -175,14 +189,18 @@ class SpotifyInfo:
         except KeyError:
             raise SpotifyExtractError(json)
 
+
     @classmethod
-    def songs_from_artist(cls, url) -> list[SpotifySong]:
+    def get_artist(cls, url) -> list[SpotifySong]:
         cls.call_refresh()
         # TODO: finish
         artist_id = url.split('artist/')[1].split('?')[0]
 
         artist_query = f'https://api.spotify.com/v1/artists/{artist_id}/tracks'
+        print(artist_query)
         artist_json = cls.get_response(artist_query)
+        print(artist_json)
+
 
     @classmethod
     def get_response(cls, query: str) -> dict:
@@ -194,6 +212,7 @@ class SpotifyInfo:
             }
         )
         return response.json()
+
 
     @classmethod
     def call_refresh(cls) -> None:
@@ -209,3 +228,7 @@ class SpotifyInfo:
         )
         response_json = response.json()
         cls.spotify_token = response_json['access_token']
+
+
+link = 'https://open.spotify.com/album/6pUg9RDDoVyQQVJ48FkmXz'
+SpotifyInfo.get_album(link)
