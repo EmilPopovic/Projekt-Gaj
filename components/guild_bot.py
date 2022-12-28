@@ -4,18 +4,14 @@ See file LICENSE or go to <https://www.gnu.org/licenses/gpl-3.0.html> for full l
 """
 
 # last changed 26/12/22
-# small formatting changes
-# update_msg() docstring
-# fuck it, all the docstrings, provided by ChatGPT
-# changed char limit to 1800
-# added default_embed class variable
-# creating new command message if the last one was deleted
-# GuildBot.bot only set once
-# lyrics now moved to separate message
+# changed how `GuildBot.__init__()` works
+# moved `__init_async__` to `__init__`
+# removed `GuildBot.create()` method
 
 from os import fdopen, remove
 from shutil import move, copymode
 from tempfile import mkstemp
+from asyncinit import asyncinit
 
 import discord
 
@@ -30,6 +26,8 @@ from exceptions import (
 )
 
 
+# noinspection PyAttributeOutsideInit
+@asyncinit
 class GuildBot(Player):
     # TODO: write docstring
     """
@@ -45,45 +43,31 @@ class GuildBot(Player):
         color = default_color
     )
 
-
-    def __init__(self, guild: discord.guild.Guild):
+    async def _async_init_(self, guild: discord.guild.Guild):
+    # async def __init__(self, guild: discord.guild.Guild):
         # initialize player for specified guild
         super().__init__(self, guild)
         self.guild: discord.guild.Guild = guild
 
-        # info about discord objects bot will be interacting with
-        self.command_channel_id:              int | None = None
-        self.command_channel: discord.TextChannel | None = None
-        self.command_message:     discord.Message | None = None
-        self.lyrics_message:      discord.Message | None = None
+        # set up message objects
+        self.command_message: discord.Message | None = None
+        self.lyrics_message:  discord.Message | None = None
 
         # set default flags
         self.show_lyrics  = False
         self.short_queue  = False
         self.show_history = False
 
-        # todo: make queue display toggling a single button
-        # todo: should behave like loop does
-        # todo: show a couple of verses at a time, move with arrows
-
-
-    # async part of __init__
-    async def __init_async__(self) -> None:
-        """
-        Should only be used after __init__ function.
-        Must be called after __init__, object is not valid if not called.
-        Initiates command channel and command message.
-        Clears existing command channel on bot start or cog reset.
-        """
-        # todo: call this from __init__
-        # todo: make private method
-        # TODO: store ids in SQL database
         # set up command channel
-        self.command_channel_id = await self.get_id(self.guild)
-        self.command_channel = self.bot.get_channel(self.command_channel_id)
+        self.command_channel_id: int              = await self.get_id(self.guild)
+        self.command_channel: discord.TextChannel = self.bot.get_channel(self.command_channel_id)
         # create a new live message
         await self.create_live_msg()
 
+    __init__ = _async_init_
+
+        # todo: make queue display toggling a single button
+        # todo: should behave like loop does
 
     async def create_live_msg(self):
         # clear command channel
@@ -378,20 +362,6 @@ class GuildBot(Player):
         move(abs_path, file_path)
 
 
-    @staticmethod
-    async def create_guild_bot(guild: discord.guild.Guild):
-        """
-        Creates a GuildBot object for guild.
-
-        A GuildBot is only created by calling this function, not by directly declaring an instance.
-        After creating the instance, __init_async__() is called,
-        that contains async commands needed for initialization.
-        """
-        m_cog = GuildBot(guild)
-        await m_cog.__init_async__()
-        return m_cog
-
-
 class BtnStyle:
     grey  = discord.ButtonStyle.grey
     green = discord.ButtonStyle.green
@@ -409,8 +379,7 @@ class Buttons(discord.ui.View):
     @staticmethod
     def get_bot(interaction: discord.Interaction):
         """Returns GuildBot object whose Buttons were interacted with."""
-        bot = GuildBot.bot
-        return bot.guild_bots[interaction.guild.id]
+        return GuildBot.bot.guild_bots[interaction.guild.id]
 
 
     @staticmethod
@@ -453,22 +422,22 @@ class Buttons(discord.ui.View):
 
     @discord.ui.button(label = '⎇', style = BtnStyle.grey, row = 0)
     async def shuffle_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        cog = Buttons.get_bot(interaction)
-        await cog.shuffle()
-        button.style = BtnStyle.green if cog.is_shuffled else BtnStyle.grey
+        guild_bot = self.get_bot(interaction)
+        await guild_bot.shuffle()
+        button.style = BtnStyle.green if guild_bot.is_shuffled else BtnStyle.grey
         await interaction.response.edit_message(view = self)
 
 
     @discord.ui.button(label = '◁', style = BtnStyle.grey, row = 0)
     async def previous_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        guild_bot = Buttons.get_bot(interaction)
+        guild_bot = self.get_bot(interaction)
         await guild_bot.previous()
         await interaction.response.edit_message(view = self)
 
 
     @discord.ui.button(label = '▉', style = BtnStyle.grey, row = 0)
     async def pause_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        guild_bot = Buttons.get_bot(interaction)
+        guild_bot = self.get_bot(interaction)
         await guild_bot.pause()
         button.style = BtnStyle.green if guild_bot.is_paused else BtnStyle.grey
         button.label = '▶' if guild_bot.is_paused else '▉'
@@ -477,14 +446,16 @@ class Buttons(discord.ui.View):
 
     @discord.ui.button(label = '▷', style = BtnStyle.grey, row = 0)
     async def skip_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        guild_bot = Buttons.get_bot(interaction)
+        guild_bot = self.get_bot(interaction)
         await guild_bot.skip()
+        # todo: what does the line below actually do?
+        # todo: why the error???
         await interaction.response.edit_message(view = self)
 
 
     @discord.ui.button(label = '⭯', style = BtnStyle.grey, row = 0)
     async def loop_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        guild_bot = Buttons.get_bot(interaction)
+        guild_bot = self.get_bot(interaction)
         await guild_bot.loop()
         button.style = BtnStyle.green if guild_bot.is_looped else BtnStyle.grey
         await interaction.response.edit_message(view = self)
@@ -493,21 +464,21 @@ class Buttons(discord.ui.View):
 
     @discord.ui.button(label = '✖', style = BtnStyle.red, row = 1)
     async def clear_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        guild_bot = Buttons.get_bot(interaction)
+        guild_bot = self.get_bot(interaction)
         await guild_bot.clear()
         await interaction.response.edit_message(view = self)
 
 
     @discord.ui.button(label = '#', style = BtnStyle.red, row = 1)
     async def dc_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        guild_bot = Buttons.get_bot(interaction)
+        guild_bot = self.get_bot(interaction)
         await guild_bot.dc()
         await interaction.response.edit_message(view = self)
 
 
     @discord.ui.button(label = '≡', style = BtnStyle.grey, row = 1)
     async def lyrics_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        guild_bot = Buttons.get_bot(interaction)
+        guild_bot = self.get_bot(interaction)
         button.style = BtnStyle.green if guild_bot.show_lyrics else BtnStyle.grey
 
         try:
@@ -521,7 +492,7 @@ class Buttons(discord.ui.View):
 
     @discord.ui.button(label = '⯆', style = BtnStyle.grey, row = 1)
     async def queue_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        guild_bot = Buttons.get_bot(interaction)
+        guild_bot = self.get_bot(interaction)
         button.style = BtnStyle.green if guild_bot.short_queue else BtnStyle.grey
 
         try:
@@ -535,7 +506,7 @@ class Buttons(discord.ui.View):
 
     @discord.ui.button(label = '⯅', style = BtnStyle.grey, row = 1)
     async def history_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        guild_bot = Buttons.get_bot(interaction)
+        guild_bot = self.get_bot(interaction)
         button.style = BtnStyle.green if guild_bot.show_history else BtnStyle.grey
 
         try:
