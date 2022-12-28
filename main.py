@@ -16,8 +16,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 # last changed 26/12/22
-# accidentally changed command name, now fixed
-# play function now takes an optional arg `number` which is used to insert the song in the middle of the queue
+# changed how `GuildBot.__init__()` works
 
 
 import sys
@@ -52,12 +51,11 @@ class MainBot(commands.AutoShardedBot):
         @self.tree.command(name = 'play', description = 'Adds a song/list to queue.')
         @app_commands.describe(song = 'The name or link of song/list.')
         async def play(interaction: discord.Interaction, song: str, number: int = None) -> None:
-            # todo: add optional insert argument that would add the song to the specified place in queue
             """If user calling the command is in a voice channel, adds wanted song/list to queue of that guild."""
             guild_bot = self.guild_bots[interaction.guild.id]
 
             user_voice_state: discord.VoiceState | None = interaction.user.voice
-            bot_vc_id: int | None = guild_bot.voice_client.channel.id if guild_bot.voice_client is not None else None
+            bot_vc_id: int | None = guild_bot.voice_client.channel.id if (guild_bot.voice_client is not None) else None
 
             # if user is not in a voice channel
             if user_voice_state is None:
@@ -89,8 +87,6 @@ class MainBot(commands.AutoShardedBot):
                 # await guild_bot.queue_command(command, song, user_voice_state)
 
                 await guild_bot.add_to_queue(song, user_voice_state.channel, number)
-
-        # todo: command names and descriptions
 
         # the structure of most commands is the same
         # we get the guild_bot that the command should be executed in
@@ -334,7 +330,7 @@ class MainBot(commands.AutoShardedBot):
 
         # create music cog for every guild bot is in
         for guild in self.guilds:
-            self.guild_bots[guild.id] = await self.add_guild(guild)
+            self.guild_bots[guild.id] = await GuildBot(guild)
 
         print(f'{c_login()} as {self.user} with user id: {c_user(self.user.id)}')
 
