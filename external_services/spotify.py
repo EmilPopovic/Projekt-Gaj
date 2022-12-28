@@ -3,10 +3,8 @@ This file is part of Shteff which is released under the GNU General Public Licen
 See file LICENSE or go to <https://www.gnu.org/licenses/gpl-3.0.html> for full license details.
 """
 
-# last changed 26/12/22
-# formatting changes
-# removed thumbnail_url from artist
-# started working on artist and album links
+# last changed 29/12/22
+# added artist link support
 
 from requests import get, post
 from datetime import timedelta
@@ -53,7 +51,6 @@ class SpotifySong:
 
 
 class SpotifyInfo:
-    # TODO: refresh_token wrapper
     # TODO: refresh token in regular intervals?
     spotify_token = ''
 
@@ -135,8 +132,6 @@ class SpotifyInfo:
         query = f'https://api.spotify.com/v1/albums/{url.split("album/")[1].split("?")[0]}/tracks'
         json = cls.get_response(query)
 
-        print(json)
-
         try:
             # todo: get `thumbnail_url`
             return [
@@ -196,10 +191,29 @@ class SpotifyInfo:
         # TODO: finish
         artist_id = url.split('artist/')[1].split('?')[0]
 
-        artist_query = f'https://api.spotify.com/v1/artists/{artist_id}/tracks'
-        print(artist_query)
-        artist_json = cls.get_response(artist_query)
-        print(artist_json)
+        query = f'https://api.spotify.com/v1/artists/{artist_id}/top-tracks?market=US'
+        json = cls.get_response(query)
+
+        try:
+            return [
+                SpotifySong(
+                    name = item['name'],
+                    url = item['external_urls']['spotify'],
+                    authors = [
+                        Author(
+                            name = author['name'],
+                            url = author['external_urls']['spotify']
+                        )
+                        for author in item['artists']
+                    ],
+                    thumbnail_url = item['album']['images'][0]['url'],
+                    duration = timedelta(milliseconds = item['duration_ms'])
+                )
+                for item in json['tracks']
+            ]
+
+        except KeyError:
+            raise SpotifyExtractError(json)
 
 
     @classmethod
@@ -228,7 +242,3 @@ class SpotifyInfo:
         )
         response_json = response.json()
         cls.spotify_token = response_json['access_token']
-
-
-link = 'https://open.spotify.com/album/6pUg9RDDoVyQQVJ48FkmXz'
-SpotifyInfo.get_album(link)
