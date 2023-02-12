@@ -54,8 +54,9 @@ class MainBot(commands.AutoShardedBot):
         self.command_handler.bot = self
 
         @self.tree.command(name='ping', description='Pings Shteff.')
-        async def skip_callback(interaction: discord.Interaction) -> None:
-            
+        async def ping_callback(interaction: discord.Interaction) -> None:
+            latency_ms = round(self.latency * 1000)
+            await interaction.response.send_message(f'Pong! My latency is {latency_ms} ms.', ephemeral = True)
 
         @self.tree.command(name = 'play', description = 'Adds a song/list to queue.')
         @app_commands.describe(song = 'The name or link of song/list.')
