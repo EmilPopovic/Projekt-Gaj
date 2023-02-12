@@ -15,13 +15,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-# last changed 30/12/22
-# commenting
-# added CommandExecutionError to some commands
-# added handling of undocumented errors to some commands
-# rewrote the `play` command
-
-
 import sys
 import json
 
@@ -35,10 +28,7 @@ from components import (
     CommandHandler,
     GuildBot
 )
-
-from utils.sql_bridge import Database as db
-from utils.colors import *
-from utils.checks import PermissionsCheck
+from utils import *
 
 with open('secrets.json', 'r') as f:
     data = json.load(f)
@@ -55,12 +45,17 @@ class MainBot(commands.AutoShardedBot):
         GuildBot.bot = self
         self.guild_bots = {}
 
-        self.database = db()
+        self.database = Database()
         GuildBot.db = self.database
         # ListAdder.db = self.database
         PermissionsCheck.db = self.database
 
         self.command_handler = CommandHandler(self)
+        self.command_handler.bot = self
+
+        @self.tree.command(name='ping', description='Pings Shteff.')
+        async def skip_callback(interaction: discord.Interaction) -> None:
+            
 
         @self.tree.command(name = 'play', description = 'Adds a song/list to queue.')
         @app_commands.describe(song = 'The name or link of song/list.')
