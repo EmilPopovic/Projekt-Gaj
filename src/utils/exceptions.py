@@ -1,13 +1,16 @@
-# last changed 12/12/22
-# moved timestamp print to colors.py
-
-from colors import *
+from .colors import *
 # todo: log file?
+# todo: explain when every exception is raised
 
 
 class FailedToConnectError(Exception):
     def __init__(self):
         print(f'{c_time()} {c_err()} Failed to connect to voice channel.')
+
+
+class CommandExecutionError(Exception):
+    def __init__(self, message: str):
+        self.message = message
 
 
 class DifferentChannelsError(Exception):

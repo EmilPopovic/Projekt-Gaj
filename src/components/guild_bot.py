@@ -3,27 +3,13 @@ This file is part of Shteff which is released under the GNU General Public Licen
 See file LICENSE or go to <https://www.gnu.org/licenses/gpl-3.0.html> for full license details.
 """
 
-# last changed 26/12/22
-# changed how `GuildBot.__init__()` works
-# moved `__init_async__` to `__init__`
-# removed `GuildBot.create()` method
-
-from os import fdopen, remove
-from shutil import move, copymode
-from tempfile import mkstemp
 from asyncinit import asyncinit
 
 import discord
 
-from colors import *
-from components.player import Player
-from checks import user_with_bot_check
-from exceptions import (
-    InteractionFailedError,
-    UserNotInVCError,
-    BotNotInVCError,
-    DifferentChannelsError
-)
+from .player import Player
+from .buttons import BtnStyle
+from utils import *
 
 
 # noinspection PyAttributeOutsideInit
@@ -35,6 +21,7 @@ class GuildBot(Player):
     """
 
     bot = None
+    db: Database = None
 
     default_color = 0xf1c40f
     default_embed = discord.Embed(
@@ -46,7 +33,7 @@ class GuildBot(Player):
     async def _async_init_(self, guild: discord.guild.Guild):
     # async def __init__(self, guild: discord.guild.Guild):
         # initialize player for specified guild
-        super().__init__(self, guild)
+        self.player = super().__init__(self, guild)
         self.guild: discord.guild.Guild = guild
 
         # set up message objects
@@ -264,109 +251,29 @@ class GuildBot(Player):
         self.lyrics_message = None
 
 
-    @staticmethod
-    async def get_id(guild: discord.guild.Guild) -> int:
-        """
-        Retrieves the ID of the command channel for the given guild.
+    @classmethod
+    async def get_id(cls, guild: discord.guild.Guild) -> int:
+        channel_id = cls.db.get_channel_id(guild.id)
 
-        If a command channel has previously been set for the guild, the ID of that channel will
-        be returned. If no command channel has been set, a new text channel will be created for the
-        guild and the ID of the new channel will be returned.
-
-        If the previously set command channel no longer exists in the guild, a new channel will
-        be created and the ID of the new channel will be returned. The ID of the old channel will be
-        replaced with the ID of the new channel in the database.
-
-        Parameters:
-        guild (discord.guild.Guild): The guild for which to retrieve the command channel ID.
-
-        Returns:
-        int: The ID of the command channel for the given guild.
-        """
-        replaced = False
-        guild_id = guild.id
-
-        with open('channel_ids.txt') as f:
-            for line in f:
-                # every line is a pair of '{guild id} {channel id}'
-                r = line.split()
-                if int(r[0]) == guild_id:
-                    channel_id = int(r[1])
-                    # check if channel doesn't exist currently
-                    guild_channels = [channel.id for channel in guild.text_channels]
-                    if channel_id not in guild_channels:
-                        replaced_info = await GuildBot.replace_command_channel(guild, channel_id)
-                        # info to replace old channel id
-                        pattern = replaced_info['pattern']
-                        subst = replaced_info['subst']
-                        # new id
-                        channel_id = replaced_info['id']
-                        replaced = True
-                    break
-            else:
-                # existing channel was not found
-                # has to create new channel
+        if channel_id is not None:
+            # check if channel exists currently
+            guild_channels = [channel.id for channel in guild.text_channels]
+            if channel_id not in guild_channels:
                 channel = await guild.create_text_channel('shteffs-disco')
-                channel_id = channel.id
-                # add new channel to database
-                with open('channel_ids.txt', 'a') as g:
-                    g.write(f'{guild_id} {channel_id}\n')
-                print(f'{c_event("CREATED CHANNEL")} {c_channel(channel_id)}')
-            f.close()
+                cls.db.update_channel_id(guild.id, channel.id)
+                return channel.id
 
-            if replaced:
-                GuildBot.replace("channel_ids.txt", pattern, subst)
+        else:
+            # existing channel was not found
+            # has to create new channel
+            channel = await guild.create_text_channel('shteffs-disco')
+            # add new channel to database
+            cls.db.add_channel_id(guild.id, channel.id)
+            print(f'{c_event("CREATED CHANNEL")} {c_channel(channel.id)}')
 
-            return channel_id
+            return channel.id
 
-
-    @staticmethod
-    async def replace_command_channel(guild: discord.guild.Guild, new_id: int) -> dict:
-        """
-        Creates a new command channel for the given guild and returns information about the replacement.
-
-        If the previously set command channel for the guild no longer exists, this method creates a new
-        text channel for the guild and returns a dictionary with the ID of the new channel, the pattern to
-        search for in the database, and the substitution to make.
-
-        Parameters:
-        guild (discord.guild.Guild): The guild for which to create a new command channel.
-        new_id (int): The ID of the old command channel that has been deleted.
-
-        Returns:
-        dict: A dictionary containing the ID of the new command channel, the pattern to search for
-            in the database, and the substitution to make.
-        """
-        channel = await guild.create_text_channel('shteffs-disco')
-        channel_id = channel.id
-
-        print(f'{c_event("CREATED CHANNEL")} {c_channel(channel_id)}, previous command channel deleted')
-
-        return {'pattern': f'{new_id}', 'subst': f'{channel_id}', 'id': channel_id}
-
-
-    @staticmethod
-    def replace(file_path: str, pattern: str, subst: str) -> None:
-        """In a text file, replaces pattern with subst."""
-        # create temp file
-        fh, abs_path = mkstemp()
-        with fdopen(fh, 'w') as new_file:
-            with open(file_path) as old_file:
-                for line in old_file:
-                    new_file.write(line.replace(pattern, subst))
-        # copy the file permissions from the old file to the new file
-        copymode(file_path, abs_path)
-        # remove original file
-        remove(file_path)
-        # move new file
-        move(abs_path, file_path)
-
-
-class BtnStyle:
-    grey  = discord.ButtonStyle.grey
-    green = discord.ButtonStyle.green
-    red   = discord.ButtonStyle.red
-    link  = discord.ButtonStyle.link
+        return channel_id
 
 
 class Buttons(discord.ui.View):

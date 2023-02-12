@@ -3,11 +3,6 @@ This file is part of Shteff which is released under the GNU General Public Licen
 See file LICENSE or go to <https://www.gnu.org/licenses/gpl-3.0.html> for full license details.
 """
 
-# last changed 26/12/22
-# added `get_songs` method that returns a list with all songs requested
-# `get_song_gens` method is now obsolete
-
-
 from colorthief import ColorThief
 from requests import get
 from youtube_dl import YoutubeDL
@@ -15,16 +10,16 @@ from io import BytesIO
 from datetime import timedelta
 from threading import Thread
 
-from external_services.spotify import (
+from api.spotify import (
     SpotifyInfo,
     SpotifySong,
     Author
 )
-from exceptions import (
+from utils import (
     SpotifyExtractError,
     YTDLError
 )
-from external_services.genius import GeniusInfo
+from api.genius import GeniusInfo
 
 
 class SongGenerator:
@@ -56,28 +51,12 @@ class SongGenerator:
 
     @staticmethod
     def get_songs(query: str) -> list:
-        lst: list[SongGenerator] = []
-
-        if 'https://open.spotify.com/track/' in query:
-            lst = [SongGenerator(query)]
-
-        elif 'https://open.spotify.com/album/' in query:
-            lst = [SongGenerator(song) for song in SpotifyInfo.get_album(query)]
-
-        elif 'https://open.spotify.com/playlist/' in query:
-            lst = [SongGenerator(song) for song in SpotifyInfo.get_playlist(query)]
-
-        elif 'https://open.spotify.com/artist/' in query:
-            lst = [SongGenerator(song) for song in SpotifyInfo.get_artist(query)]
-
+        if 'https://open.spotify.com/' in query:
+            lst = [SongGenerator(song) for song in SpotifyInfo.spotify_get(query)]
         else:
-            lst.extend([SongGenerator(query)])
+            lst = [SongGenerator(SpotifyInfo.spotify_get(query)[0])]
 
-        return list(filter(SongGenerator.check_if_good, lst))
-
-
-    def check_if_good(self) -> bool:
-        return self.is_good
+        return [song for song in lst if song.is_good]
 
 
     def __init__(self, query):
@@ -120,9 +99,9 @@ class SongGenerator:
     def set_spotify_info(self, query: str) -> bool|None:
         try:
             if 'open.spotify.com' in query:
-                info: SpotifySong = SpotifyInfo.get_track(query)
+                info: SpotifySong = SpotifyInfo.spotify_get(query)[0]
             else:
-                info: SpotifySong = SpotifyInfo.search_spotify(query)
+                info: SpotifySong = SpotifyInfo.spotify_get(query)[0]
 
         except SpotifyExtractError:
             self.is_good = False
@@ -140,9 +119,8 @@ class SongGenerator:
         self.spotify_link = info.url
 
 
-    def get_source_and_color(self) -> dict:
+    def get_source_color_lyrics(self) -> dict:
         # multithreading calculating color and extracting source info to save time
-        # todo: set color and source for songs in background
         source_thread = Thread(target = self.set_source, args = ())
         color_thread = Thread(target = self.set_color, args = ())
         lyrics_thread = Thread(target = self.set_lyrics, args = ())

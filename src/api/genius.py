@@ -1,12 +1,12 @@
-# last changed 12/12/2022
-# wrote the bloody thing
-# added clearing of parts that are not needed
-# told future me to split verses
-
+import json
 
 from lyricsgenius import Genius
 
-from secrets import genius_client_access_token as api_key
+
+with open('secrets.json', 'r') as f:
+    data = json.load(f)
+
+api_key = data['genius']['genius_client_access_token']
 
 
 class GeniusInfo:

@@ -3,23 +3,14 @@ This file is part of Shteff which is released under the GNU General Public Licen
 See file LICENSE or go to <https://www.gnu.org/licenses/gpl-3.0.html> for full license details.
 """
 
-# last changed 26/12/22
-# added support for lyrics
-# some formatting
-# yay ChatGPT docstrings
-# renamed play_music to play_next
-# play function now takes an optional arg `number` which is used to insert the song in the middle of the queue
-
 import asyncio
 import random
 
 import discord
 from discord.ext import commands
-from threading import Thread
 
-from components.song_generator import SongGenerator
-from exceptions import FailedToConnectError
-from colors import *
+from .song_generator import SongGenerator
+from utils import *
 
 
 class Player(commands.Cog):
@@ -40,7 +31,11 @@ class Player(commands.Cog):
     }
 
 
-    def __init__(self, guild_bot, guild: discord.guild.Guild):
+    def __init__(
+            self,
+            guild_bot,
+            guild: discord.guild.Guild
+    ):
         self.guild: discord.guild.Guild = guild
         self.guild_bot = guild_bot
 
@@ -66,14 +61,10 @@ class Player(commands.Cog):
         self.voice_client:   discord.VoiceClient | None = None
         self.voice_channel: discord.VoiceChannel | None = None
 
-        # todo: doesn't work
-        # initialize command queue
-        self.command_queue = []
-        command_thread = Thread(target = self.check_for_commands, args = ())
-        command_thread.start()
+        # todo: race condition event loop shit
 
 
-    def reset_bot_states(self) -> None:
+    def __reset_bot_states(self) -> None:
         """
         Resets certain states and flags to their default values.
 
@@ -106,33 +97,6 @@ class Player(commands.Cog):
         self.command_queue = []
 
 
-    async def check_for_commands(self):
-        # todo: broken af
-        while True:
-            if len(self.command_queue) > 0:
-                command_dict = self.command_queue.pop(0)
-                await self.execute_command(
-                    command_dict['command'],
-                    *command_dict['args']
-                )
-
-
-    async def queue_command(self, command, *args):
-        # todo: all of this needs to go
-        if args:
-            self.command_queue.append(
-                {'command': command, 'args': list(args)}
-            )
-
-
-    @staticmethod
-    async def execute_command(command, *args):
-        if args:
-            await command(*args)
-        else:
-            await command()
-
-
     async def shuffle(self) -> None:
         """
         Shuffles the queue of songs.
@@ -162,15 +126,22 @@ class Player(commands.Cog):
 
                 never_shuffled_part = self.queue[:self.shuffle_start_index + 1]
 
-                new_skipped_unshuffled = [song for song in self.skipped_while_shuffled
-                                          if song != self.queue[self.shuffle_start_index]]
+                new_skipped_unshuffled = [
+                    song for song in self.skipped_while_shuffled
+                    if song != self.queue[self.shuffle_start_index]
+                ]
 
-                new_unshuffled = [song for song in self.unshuffled_queue
-                                  if song not in self.skipped_while_shuffled and song != current]
+                new_unshuffled = [
+                    song for song in self.unshuffled_queue
+                    if song not in self.skipped_while_shuffled and song != current
+                ]
 
                 self.queue = never_shuffled_part + new_skipped_unshuffled + [current] + new_unshuffled
 
                 self.is_shuffled = False
+
+        else:
+            raise CommandExecutionError('Queue is empty.')
 
         await self.guild_bot.update_msg()
 
@@ -184,11 +155,11 @@ class Player(commands.Cog):
         """
         # can't go to previous if pointer is on the first song
         if self.p_index == 0:
-            return
+            raise CommandExecutionError('Cannot go to previous song if on first song.')
 
         self.p_index -= 2
         self.voice_client.pause()
-        await self.play_next()
+        await self.__play_next()
 
 
     async def pause(self) -> None:
@@ -225,7 +196,7 @@ class Player(commands.Cog):
         list of skipped songs.
         """
         if self.voice_client is None:
-            return
+            raise CommandExecutionError('Bot is not in a voice channel.')
 
         self.voice_client.pause()
         # handle case if shuffled
@@ -239,7 +210,7 @@ class Player(commands.Cog):
         if self.is_looped_single:
             await self.loop()
 
-        await self.play_next()
+        await self.__play_next()
 
 
     async def loop(self) -> None:
@@ -255,7 +226,7 @@ class Player(commands.Cog):
         message to reflect the current looping status of the queue or single song.
         """
         if self.voice_client is None:
-            return
+            raise CommandExecutionError('Bot is not in a voice channel.')
 
         # if not looped, loop queue
         elif not self.is_looped and not self.is_looped_single:
@@ -285,7 +256,7 @@ class Player(commands.Cog):
         message and delete the lyrics message, if it exists.
         """
         if self.voice_client is None:
-            return
+            raise CommandExecutionError('Bot is not in a voice channel.')
 
         # clear all song lists
         self.queue                  = []
@@ -320,18 +291,116 @@ class Player(commands.Cog):
         command message to reflect the changes.
         """
         if self.voice_client is None:
-            return
+            raise CommandExecutionError('Bot is not in a voice channel.')
 
         await self.voice_client.disconnect()
         await self.guild_bot.delete_lyrics_message()
 
-        self.reset_bot_states()
+        self.__reset_bot_states()
         self.guild_bot.reset_flags()
 
         await self.guild_bot.update_msg()
 
 
-    async def join(self):
+    async def swap(self, i: int, j: int) -> None:
+        """
+        Swaps songs at indexes `i` and `j` in the queue.
+
+        This method swaps the songs at indexes `i` and `j` in the `self.queue` list.
+        The method also updates the command message to reflect the changes.
+
+        Args:
+        i: int: The index of the first song to swap.
+        j: int: The index of the second song to swap.
+
+        Returns:
+        None
+        """
+        # indexes must be greater than 0
+        if i == 0 and j == 0:
+            raise CommandExecutionError('Arguments must be greater than 0.')
+        # swapping only if different indexes selected
+        if i == j:
+            raise CommandExecutionError('Arguments must be different.')
+        # check if wanted indexes exist in queue
+        queue_len = len(self.queue[self.p_index + 1:])
+        if i > queue_len or j > queue_len:
+            raise CommandExecutionError('Arguments not in queue.')
+        # correct for played offset
+        i, j = i + self.p_index, j + self.p_index
+        # swap places in queue
+        self.queue[i], self.queue[j] = self.queue[j], self.queue[i]
+        await self.guild_bot.update_msg()
+
+
+    async def remove(self, n: int) -> None:
+        """
+        Removes song at index `n` in the queue.
+
+        n must be greater than 0 and in range.
+        """
+        if n <= 0:
+            print('value less than 0')
+            raise CommandExecutionError('Argument must be greater than 0.')
+
+        queue_len = len(self.queue[self.p_index + 1:])
+        if n > queue_len:
+            raise CommandExecutionError('Argument not in queue.')
+
+        self.queue.pop(n + self.p_index)
+        await self.guild_bot.update_msg()
+
+
+    async def goto(self, n: int) -> None:
+        if n <= 0:
+            raise CommandExecutionError('Argument must be greater than 0.')
+
+        queue_len = len(self.queue[self.p_index + 1:])
+        if n > queue_len:
+            raise CommandExecutionError('Argument not in queue.')
+
+        if n == 1:
+            await self.skip()
+            return
+
+        to_remove = self.queue[self.p_index + 1:self.p_index + n]
+        for song in to_remove:
+            self.queue.remove(song)
+
+        await self.skip()
+
+
+    async def add_to_queue(self, query: str, voice_channel: discord.VoiceChannel, number: int):
+        """
+        Add songs to the music queue and potentially start playing them.
+
+        Parameters:
+        query (str): a string containing the name of a song or a playlist URL
+        voice_state (discord.VoiceState): the voice state of the user requesting the songs
+        number (int, optional): the index in the queue where the songs should be inserted.
+            If not provided, the songs will be appended to the end of the queue.
+        """
+        if number is not None and number <= 0:
+            raise CommandExecutionError('Invalid optional argument `number`.')
+
+        self.voice_channel = voice_channel
+
+        songs: list[SongGenerator] = SongGenerator.get_songs(query)
+        if number is None or number >= len(self.queue) - self.p_index:
+            self.queue.extend(songs)
+        else:
+            self.queue.insert(self.p_index + number, *songs)
+
+        if self.is_shuffled and songs is not None:
+            self.unshuffled_queue.extend(songs)
+
+        if not self.is_playing:
+            await self.__play_next()
+
+        await self.guild_bot.update_msg()
+
+
+    async def __join(self):
         """
         Connects to or moves the voice client to the specified voice channel.
 
@@ -351,7 +420,7 @@ class Player(commands.Cog):
             await self.voice_client.move_to(self.voice_channel)
 
 
-    async def play_next(self) -> None:
+    async def __play_next(self) -> None:
         """
         Plays the next song in the queue. If the end of the queue is reached, the player will
         either loop the queue or end playback depending on the current looping settings.
@@ -375,7 +444,7 @@ class Player(commands.Cog):
             # if not already set
             current = self.queue[self.p_index]
             current.set_lyrics()
-            m_url = current.get_source_and_color()['source']
+            m_url = current.get_source_color_lyrics()['source']
 
             # if YouTube extract fails
             if not current.is_good:
@@ -386,7 +455,7 @@ class Player(commands.Cog):
 
             # join voice_client
             try:
-                await self.join()
+                await self.__join()
             except FailedToConnectError:
                 print(f'{c_err()} failed to connect to vc in guild {c_channel(self.guild.id)}')
                 return
@@ -400,7 +469,7 @@ class Player(commands.Cog):
             loop = asyncio.get_event_loop()
             self.voice_client.play(
                 discord.FFmpegPCMAudio(m_url, **self.ffmpeg_options),
-                after = lambda _: loop.create_task(self.play_next())
+                after = lambda _: loop.create_task(self.__play_next())
             )
 
         else:
@@ -408,49 +477,3 @@ class Player(commands.Cog):
             # todo: i don't know what this is doing but it doesn't do what it should
             self.is_playing = False
             await self.guild_bot.update_msg()
-
-
-    async def add_to_queue(self, query: str, voice_state: discord.VoiceState, number: int):
-        """
-        Add songs to the music queue and potentially start playing them.
-
-        Parameters:
-        query (str): a string containing the name of a song or a playlist URL
-        voice_state (discord.VoiceState): the voice state of the user requesting the songs
-        number (int, optional): the index in the queue where the songs should be inserted.
-            If not provided, the songs will be appended to the end of the queue.
-        """
-        self.voice_channel = voice_state
-
-        songs = SongGenerator.get_songs(query)
-        if number is None or number >= len(self.queue) - self.p_index:
-            self.queue.extend(songs)
-        else:
-            self.queue.insert(self.p_index + number, *songs)
-
-        if self.is_shuffled and songs is not None:
-            self.unshuffled_queue.extend(songs)
-
-        if not self.is_playing:
-            await self.play_next()
-
-        await self.guild_bot.update_msg()
-
-
-    async def swap(self, i: int, j: int) -> None:
-        """
-        Swaps songs at indexes `i` and `j` in the queue.
-
-        This method swaps the songs at indexes `i` and `j` in the `self.queue` list.
-        The method also updates the command message to reflect the changes.
-
-        Args:
-        i: int: The index of the first song to swap.
-        j: int: The index of the second song to swap.
-
-        Returns:
-        None
-        """
-        i, j = i + self.p_index, j + self.p_index
-        self.queue[i], self.queue[j] = self.queue[j], self.queue[i]
-        await self.guild_bot.update_msg()
