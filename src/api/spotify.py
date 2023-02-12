@@ -3,16 +3,13 @@ This file is part of Shteff which is released under the GNU General Public Licen
 See file LICENSE or go to <https://www.gnu.org/licenses/gpl-3.0.html> for full license details.
 """
 
-# last changed 29/12/22
-# commenting
-
 import json
 
 from requests import get, post
 from datetime import timedelta
 from dataclasses import dataclass
 
-from exceptions import SpotifyExtractError
+from utils import SpotifyExtractError
 
 
 with open('secrets.json', 'r') as f:

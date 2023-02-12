@@ -1,8 +1,3 @@
-# last changed 12/12/2022
-# wrote the bloody thing
-# added clearing of parts that are not needed
-# told future me to split verses
-
 import json
 
 from lyricsgenius import Genius
