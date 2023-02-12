@@ -1,10 +1,10 @@
-from anti_spam_cog import AntiSpamCog
-from command_handler import CommandHandler
-from guild_bot import GuildBot
-from help_cog import HelpCog
-from list_select import ListAdder
-from player import Player
-from song_generator import SongGenerator
+from .anti_spam_cog import AntiSpamCog
+from .command_handler import CommandHandler
+from .guild_bot import GuildBot
+from .help_cog import HelpCog
+from .list_select import ListAdder
+from .player import Player
+from .song_generator import SongGenerator
 
 print(
     """

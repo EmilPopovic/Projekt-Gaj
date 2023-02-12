@@ -1,4 +1,3 @@
-# last changed 23/12/22
 # todo: rewrite all of this
 
 from discord.ext import commands

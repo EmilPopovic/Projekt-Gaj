@@ -3,6 +3,11 @@ import discord
 from utils.exceptions import CommandExecutionError
 from utils.checks import user_with_bot_check
 
+from utils import (
+    CommandExecutionError,
+    user_with_bot_check
+)
+
 
 # noinspection PyBroadException
 class CommandHandler:

@@ -1,5 +1,3 @@
-# last changed 25/12/22
-# changes committed
 # todo: rewrite all of this
 
 import discord

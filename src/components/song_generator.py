@@ -3,10 +3,6 @@ This file is part of Shteff which is released under the GNU General Public Licen
 See file LICENSE or go to <https://www.gnu.org/licenses/gpl-3.0.html> for full license details.
 """
 
-# last changed 29/12/22
-# commenting
-
-
 from colorthief import ColorThief
 from requests import get
 from youtube_dl import YoutubeDL
@@ -14,16 +10,16 @@ from io import BytesIO
 from datetime import timedelta
 from threading import Thread
 
-from spotify import (
+from api.spotify import (
     SpotifyInfo,
     SpotifySong,
     Author
 )
-from exceptions import (
+from utils import (
     SpotifyExtractError,
     YTDLError
 )
-from genius import GeniusInfo
+from api.genius import GeniusInfo
 
 
 class SongGenerator:

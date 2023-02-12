@@ -1,8 +1,8 @@
 import discord
 from discord.ui import Select, View
-from components.buttons import BtnStyle
-from sql_bridge import Database
-from checks import PermissionsCheck as check
+
+from .buttons import BtnStyle
+from utils import Database, PermissionsCheck as check
 
 
 class CreatePlaylistButtons(discord.ui.View):

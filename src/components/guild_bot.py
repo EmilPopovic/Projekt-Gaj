@@ -3,25 +3,13 @@ This file is part of Shteff which is released under the GNU General Public Licen
 See file LICENSE or go to <https://www.gnu.org/licenses/gpl-3.0.html> for full license details.
 """
 
-# last changed 26/12/22
-# changes committed
-
-
 from asyncinit import asyncinit
 
 import discord
 
-from sql_bridge import Database
-from components.buttons import BtnStyle
-from colors import *
-from components.player import Player
-from checks import user_with_bot_check
-from exceptions import (
-    InteractionFailedError,
-    UserNotInVCError,
-    BotNotInVCError,
-    DifferentChannelsError
-)
+from .player import Player
+from .buttons import BtnStyle
+from utils import *
 
 
 # noinspection PyAttributeOutsideInit

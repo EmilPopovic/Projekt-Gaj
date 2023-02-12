@@ -3,24 +3,14 @@ This file is part of Shteff which is released under the GNU General Public Licen
 See file LICENSE or go to <https://www.gnu.org/licenses/gpl-3.0.html> for full license details.
 """
 
-# last changed 30/12/22
-# moved input validity check to swap method
-# raises CommandExecutionError if invalid input
-# changed `play_next` to private method `__play_next`
-# changed `join` to private method `__join`
-# changed `reset_bot_states` to private method `__reset_bot_states`
-# changed `reset_execute_command` to private method `__execute_command`
-# fixed formatting in shuffle function
-
 import asyncio
 import random
 
 import discord
 from discord.ext import commands
 
-from components.song_generator import SongGenerator
-from colors import *
-from exceptions import FailedToConnectError, CommandExecutionError
+from .song_generator import SongGenerator
+from utils import *
 
 
 class Player(commands.Cog):
@@ -206,7 +196,7 @@ class Player(commands.Cog):
         list of skipped songs.
         """
         if self.voice_client is None:
-            return
+            raise CommandExecutionError('Bot is not in a voice channel.')
 
         self.voice_client.pause()
         # handle case if shuffled
@@ -236,7 +226,7 @@ class Player(commands.Cog):
         message to reflect the current looping status of the queue or single song.
         """
         if self.voice_client is None:
-            return
+            raise CommandExecutionError('Bot is not in a voice channel.')
 
         # if not looped, loop queue
         elif not self.is_looped and not self.is_looped_single:
@@ -266,7 +256,7 @@ class Player(commands.Cog):
         message and delete the lyrics message, if it exists.
         """
         if self.voice_client is None:
-            return
+            raise CommandExecutionError('Bot is not in a voice channel.')
 
         # clear all song lists
         self.queue                  = []
@@ -333,7 +323,7 @@ class Player(commands.Cog):
         if i == j:
             raise CommandExecutionError('Arguments must be different.')
         # check if wanted indexes exist in queue
-        queue_len = len( self.queue[self.p_index+1:] )
+        queue_len = len(self.queue[self.p_index + 1:])
         if i > queue_len or j > queue_len:
             raise CommandExecutionError('Arguments not in queue.')
         # correct for played offset
@@ -353,7 +343,7 @@ class Player(commands.Cog):
             print('value less than 0')
             raise CommandExecutionError('Argument must be greater than 0.')
 
-        queue_len = len( self.queue[self.p_index+1:] )
+        queue_len = len(self.queue[self.p_index + 1:])
         if n > queue_len:
             raise CommandExecutionError('Argument not in queue.')
 
@@ -373,7 +363,7 @@ class Player(commands.Cog):
             await self.skip()
             return
 
-        to_remove = self.queue[self.p_index+1:self.p_index+n]
+        to_remove = self.queue[self.p_index + 1:self.p_index + n]
         for song in to_remove:
             self.queue.remove(song)
 
