@@ -1,9 +1,8 @@
-# last changed 23/12/22
-# timestamp printed with log
-# -> not needed to print timestamp separately
-# fixed a bug
+import colorama
 
 from datetime import datetime
+
+colorama.init(autoreset=True)
 
 
 class Colors:

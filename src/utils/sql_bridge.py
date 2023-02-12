@@ -1,7 +1,8 @@
 import json
 import mysql.connector
 from mysql.connector import Error
-from colors import *
+
+from .colors import *
 
 with open('secrets.json', 'r') as f:
     data = json.load(f)

@@ -1,7 +1,4 @@
-# last changed 30/12/22
-# added CommandExecutionError
-
-from colors import *
+from .colors import *
 # todo: log file?
 # todo: explain when every exception is raised
 
