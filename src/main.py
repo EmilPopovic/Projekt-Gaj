@@ -26,7 +26,8 @@ from components import (
     AntiSpamCog,
     HelpCog,
     CommandHandler,
-    GuildBot
+    GuildBot,
+    CommandButtons
 )
 from utils import *
 
@@ -53,46 +54,55 @@ class MainBot(commands.AutoShardedBot):
         self.command_handler = CommandHandler(self)
         self.command_handler.bot = self
 
+        CommandButtons.command_handler = self.command_handler
+        CommandButtons.bot = self
+
+        # BOT COMMANDS #
+
+        @self.tree.command(name='help', description='Get help using the bot.')
+        async def help_callback(interaction: discord.Interaction):
+            await HelpCog.send_message(interaction)
+
         @self.tree.command(name='ping', description='Pings Shteff.')
-        async def ping_callback(interaction: discord.Interaction) -> None:
+        async def ping_callback(interaction: discord.Interaction):
             latency_ms = round(self.latency * 1000)
-            await interaction.response.send_message(f'Pong! My latency is {latency_ms} ms.', ephemeral = True)
+            await interaction.response.send_message(f'Pong! My latency is {latency_ms} ms.', ephemeral=True)
 
         @self.tree.command(name = 'play', description = 'Adds a song/list to queue.')
         @app_commands.describe(song = 'The name or link of song/list.')
-        async def play_callback(interaction: discord.Interaction, song: str, number: int = None) -> None:
+        async def play_callback(interaction: discord.Interaction, song: str, number: int = None):
             await self.command_handler.play(interaction, song, number)
 
         @self.tree.command(name = 'skip', description = 'Skips to the next queued song.')
-        async def skip_callback(interaction: discord.Interaction) -> None:
+        async def skip_callback(interaction: discord.Interaction):
             await self.command_handler.skip(interaction)
 
         @self.tree.command(name = 'loop', description = 'Loops queue or single song.')
-        async def loop_callback(interaction: discord.Interaction) -> None:
+        async def loop_callback(interaction: discord.Interaction):
             await self.command_handler.loop(interaction)
 
         @self.tree.command(name = 'clear', description = 'Clears queue and history, stops playing.')
-        async def clear_callback(interaction: discord.Interaction) -> None:
+        async def clear_callback(interaction: discord.Interaction):
             await self.command_handler.clear(interaction)
 
         @self.tree.command(name = 'dc', description = 'Disconnects bot from voice channel.')
-        async def disconnect_callback(interaction: discord.Interaction) -> None:
+        async def disconnect_callback(interaction: discord.Interaction):
             await self.command_handler.disconnect(interaction)
 
-        @self.tree.command(name = 'previous', description = 'Skips current song and plays previous.')
-        async def previous_callback(interaction: discord.Interaction) -> None:
+        @self.tree.command(name = 'back', description = 'Skips current song and plays previous.')
+        async def back_callback(interaction: discord.Interaction):
             await self.command_handler.previous(interaction)
 
         @self.tree.command(name = 'queue', description = 'Toggles queue display type (short/long).')
-        async def queue_callback(interaction: discord.Interaction) -> None:
+        async def queue_callback(interaction: discord.Interaction):
             await self.command_handler.queue(interaction)
 
         @self.tree.command(name = 'history', description = 'Toggles history display type (show/hide).')
-        async def history_callback(interaction: discord.Interaction) -> None:
+        async def history_callback(interaction: discord.Interaction):
             await self.command_handler.history(interaction)
 
         @self.tree.command(name = 'lyrics', description = 'Toggles lyrics display (show/hide).')
-        async def lyrics_callback(interaction: discord.Interaction) -> None:
+        async def lyrics_callback(interaction: discord.Interaction):
             await self.command_handler.lyrics(interaction)
 
         @self.tree.command(name = 'shuffle', description = 'Toggles queue shuffle.')
@@ -101,19 +111,19 @@ class MainBot(commands.AutoShardedBot):
 
         @self.tree.command(name = 'swap', description = 'Swap places of queued songs.')
         @app_commands.describe(song1 = 'Place of first song in queue.', song2 = 'Place of second song in the queue.')
-        async def swap_callback(interaction: discord.Interaction, song1: int, song2: int) -> None:
+        async def swap_callback(interaction: discord.Interaction, song1: int, song2: int):
             await self.command_handler.swap(interaction, song1, song2)
 
         @self.tree.command(name = 'pause', description = 'Pauses or unpauses playing.')
-        async def pause_callback(interaction: discord.Interaction) -> None:
+        async def pause_callback(interaction: discord.Interaction):
             await self.command_handler.pause(interaction)
 
         @self.tree.command(name = 'remove', description = 'Removes song with given index from the queue.')
-        async def remove_callback(interaction: discord.Interaction, number: int) -> None:
+        async def remove_callback(interaction: discord.Interaction, number: int):
             await self.command_handler.remove(interaction, number)
 
         @self.tree.command(name = 'goto', description = 'Jumps to the song with given index, removes skipped songs.')
-        async def goto_callback(interaction: discord.Interaction, number: int) -> None:
+        async def goto_callback(interaction: discord.Interaction, number: int):
             await self.command_handler.goto(interaction, number)
 
         # @self.tree.command(name = 'create', description = 'Add a song to a playlist.')
@@ -124,7 +134,30 @@ class MainBot(commands.AutoShardedBot):
         # async def add_callback(interaction: discord.Interaction, number: int = 0) -> None:
         #     await self.command_handler.add(interaction, number)
 
-    # todo: on guild join
+        # BOT LISTENERS #
+
+        @self.event
+        async def on_voice_state_update(member, before, after):
+            if member != self.user or before.channel == after.channel:
+                return
+
+            guild_id = member.guild.id
+            guild_bot = self.guild_bots[guild_id]
+
+            if before.channel and not after.channel:
+                print(f'{c_event("DISCONNECTED")} in {c_guild(guild_id)}')
+                await guild_bot.dc(disconnect = False)
+            elif not before.channel and after.channel:
+                print(f'{c_event("CONNECTED")} in {c_guild(guild_id)}')
+                pass
+            else:
+                print(f'{c_event("MOVED")} in {c_guild(guild_id)}')
+                await guild_bot.dc(disconnect = False)
+
+        @self.event
+        async def on_guild_join(guild):
+            self.guild_bots[guild.id] = await GuildBot(guild)
+            # todo: delete GuildBot and database entry when leaving guild
 
     async def on_ready(self) -> None:
         """
@@ -149,6 +182,10 @@ class MainBot(commands.AutoShardedBot):
             self.guild_bots[guild.id] = await GuildBot(guild)
 
         print(f'{c_login()} as {self.user} with user id: {c_user(self.user.id)}')
+
+
+    def get_bot(self, interaction):
+        return self.guild_bots[interaction.guild.id]
 
 
 if __name__ == '__main__':
