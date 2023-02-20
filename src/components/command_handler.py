@@ -1,12 +1,6 @@
 import discord
 
-from utils.exceptions import CommandExecutionError
-from utils.checks import user_with_bot_check
-
-from utils import (
-    CommandExecutionError,
-    user_with_bot_check
-)
+from utils import CommandExecutionError, user_with_bot_check, InteractionResponder as Responder
 
 
 # noinspection PyBroadException
@@ -14,33 +8,50 @@ class CommandHandler:
     def __init__(self, main_bot):
         self.bot = main_bot
 
-
     @staticmethod
     async def handle_interaction_error(interaction, exception):
         match type(exception).__name__:
             case 'UserNotInVCError':
-                await interaction.response.send_message(
-                    'Connect to a voice channel to use this command.',
-                    ephemeral = True
-                )
+                await Responder.send('Connect to a voice channel to use this command.', interaction, fail = True)
             case 'BotNotInVCError':
-                await interaction.response.send_message(
-                    'Bot has to be with you in a voice channel to use this command.',
-                    ephemeral = True
-                )
+                await Responder.send('Shteff must be in a voice channel to use this command.', interaction, fail = True)
             case 'DifferentChannelsError':
-                await interaction.response.send_message(
-                    'You and the bot are in different voice channels, move to use this command.',
-                    ephemeral = True
-                )
+                await Responder.send('You and Shteff are in different voice channels.', interaction, fail = True)
             case _:
-                await interaction.response.send_message(
-                    'An undocumented error occurred.',
-                    ephemeral = True
-                )
+                await Responder.send('An undocumented error occurred.', interaction, fail = True)
 
+    # todo: ignore command if bot not in vc
+    async def __execute(self,
+                        guild_bot,
+                        func,
+                        success_msg: str,
+                        interaction: discord.Interaction,
+                        send_response: bool,
+                        args=None,
+                        kwargs=None):
+        try:
+            user_with_bot_check(interaction, guild_bot)
+        except Exception as exception:
+            await self.handle_interaction_error(interaction, exception)
+            return
 
-    async def play(self, interaction: discord.Interaction, song: str, number: int = None) -> None:
+        try:
+            if args is None and kwargs is None:
+                await func()
+            elif args is None:
+                await func(**kwargs)
+            elif kwargs is None:
+                await func(*args)
+            else:
+                await func(*args, **kwargs)
+        except CommandExecutionError as error:
+            await Responder.send(error.message, interaction, fail = True)
+        except Exception as _:
+            await Responder.send('An undocumented error occurred.', interaction, fail = True)
+        else:
+            if send_response: await Responder.send(success_msg, interaction)
+
+    async def play(self, interaction: discord.Interaction, song: str, place: int = None, send_response=True):
         """If user calling the command is in a voice channel, adds wanted song/list to queue of that guild."""
         guild_bot = self.bot.guild_bots[interaction.guild.id]
 
@@ -49,311 +60,79 @@ class CommandHandler:
 
         # if user is not in a voice channel
         if user_voice_state is None:
-            await interaction.response.send_message('Connect to a voice channel to play songs.', ephemeral = True)
+            await Responder.send('Connect to a voice channel to play songs.', interaction, fail = True)
             return
         # if user is in a different voice channel than the bot
         elif bot_vc_id and user_voice_state.channel.id != bot_vc_id:
-            await interaction.response.send_message('You are not in voice channel with the bot.', ephemeral = True)
+            await Responder.send('You are not in a voice channel with Shteff', interaction, fail = True)
             return
         # if user is in a voice channel with the bot
         try:
-            await guild_bot.add_to_queue(song, user_voice_state.channel, number)
+            await Responder.send('Trying to add song(s)', interaction, event = True)
+            await guild_bot.add_to_queue(
+                query = song,
+                voice_channel = user_voice_state.channel,
+                number = place,
+                interaction = interaction
+            )
         except CommandExecutionError as error:
-            await interaction.response.send_message(error.message, ephemeral = True)
-        except:
-            await interaction.response.send_message('An undocumented error occurred.', ephemeral = True)
+            await Responder.send(error.message, interaction, followup = True, fail = True)
+        except Exception as _:
+            await Responder.send('An undocumented error occurred.', interaction, followup = True, fail = True)
         # else:
-        #    await interaction.response.send_message('Added song(s).', ephemeral = True)
+        #    if send_response: await interaction.response.send_message('Added song(s).', ephemeral=True)
 
-
-    async def skip(self, interaction: discord.Interaction) -> None:
-        """Skips to next song in queue."""
-        # get guild bot that should execute the command
+    async def swap(self, interaction: discord.Interaction, song1: int, song2: int, send_response=True):
         guild_bot = self.bot.guild_bots[interaction.guild.id]
-        try:
-            # check if user is with the bot, function raises exceptions otherwise
-            user_with_bot_check(interaction, guild_bot)
-        except Exception as exception:
-            # send an error message if user is not with the bot
-            await self.handle_interaction_error(interaction, exception)
-            return
+        args = song1, song2
+        await self.__execute(guild_bot, guild_bot.swap, 'Songs swapped', interaction, send_response, args)
 
-        try:
-            # try to execute the command
-            await guild_bot.skip()
-        except CommandExecutionError as error:
-            # if the command fails to execute, the right error message is shown
-            await interaction.response.send_message(error.message, ephemeral = True)
-        except:
-            # if the error is undocumented, a generic error message is shown
-            await interaction.response.send_message('An undocumented error occurred.', ephemeral = True)
-        else:
-            # follow up with a command confirmation
-            await interaction.response.send_message('Skipped song.', ephemeral = True)
-
-
-    async def loop(self, interaction: discord.Interaction) -> None:
-        """Loops the following queue including the current song (but not the history)."""
+    async def remove(self, interaction: discord.Interaction, number: int, send_response=True):
         guild_bot = self.bot.guild_bots[interaction.guild.id]
-        try:
-            user_with_bot_check(interaction, guild_bot)
-        except Exception as exception:
-            await self.handle_interaction_error(interaction, exception)
-            return
+        args = number
+        await self.__execute(guild_bot, guild_bot.remove, 'Song removed', interaction, send_response, args)
 
-        try:
-            await guild_bot.loop()
-        except CommandExecutionError as error:
-            await interaction.response.send_message(error.message, ephemeral = True)
-        except:
-            await interaction.response.send_message('An undocumented error occurred.', ephemeral = True)
-        else:
-            await interaction.response.send_message('Loop toggled.', ephemeral = True)
-
-
-    async def clear(self, interaction: discord.Interaction) -> None:
-        """Loops the current song."""
+    async def goto(self, interaction: discord.Interaction, number: int, send_response=True):
         guild_bot = self.bot.guild_bots[interaction.guild.id]
-        try:
-            user_with_bot_check(interaction, guild_bot)
-        except Exception as exception:
-            await self.handle_interaction_error(interaction, exception)
-            return
+        args = number
+        await self.__execute(guild_bot, guild_bot.goto, 'Jumped to song.', interaction, send_response, args)
 
-        try:
-            await guild_bot.clear()
-        except CommandExecutionError as error:
-            await interaction.response.send_message(error.message, ephemeral = True)
-        except:
-            await interaction.response.send_message('An undocumented error occurred.', ephemeral = True)
-        else:
-            await interaction.response.send_message('Queue cleared.', ephemeral = True)
+    async def skip(self, interaction: discord.Interaction, send_response=True):
+        guild_bot = self.bot.get_bot(interaction)
+        await self.__execute(guild_bot, guild_bot.skip, 'Skipped to next song.', interaction, send_response)
 
+    async def loop(self, interaction: discord.Interaction, send_response=True):
+        guild_bot = self.bot.get_bot(interaction)
+        await self.__execute(guild_bot, guild_bot.loop, 'Loop toggled.', interaction, send_response)
 
-    async def disconnect(self, interaction: discord.Interaction) -> None:
-        """Disconnects bot from voice channel."""
-        guild_bot = self.bot.guild_bots[interaction.guild.id]
-        try:
-            user_with_bot_check(interaction, guild_bot)
-        except Exception as exception:
-            await self.handle_interaction_error(interaction, exception)
-            return
+    async def clear(self, interaction: discord.Interaction, send_response=True):
+        guild_bot = self.bot.get_bot(interaction)
+        await self.__execute(guild_bot, guild_bot.clear, 'Queue cleared.', interaction, send_response)
 
-        try:
-            await guild_bot.dc()
-        except CommandExecutionError as error:
-            await interaction.response.send_message(error.message, ephemeral = True)
-        except:
-            await interaction.response.send_message('An undocumented error occurred.', ephemeral = True)
-        else:
-            await interaction.response.send_message('Bot disconnected.', ephemeral = True)
+    async def disconnect(self, interaction: discord.Interaction, send_response=True):
+        guild_bot = self.bot.get_bot(interaction)
+        await self.__execute(guild_bot, guild_bot.dc, 'Bot disconnected.', interaction, send_response)
 
+    async def previous(self, interaction: discord.Interaction, send_response=True):
+        guild_bot = self.bot.get_bot(interaction)
+        await self.__execute(guild_bot, guild_bot.previous, 'Went to previous song.', interaction, send_response)
 
-    async def previous(self, interaction: discord.Interaction) -> None:
-        """Skips current song and plays first song in history, i.e. previous song."""
-        guild_bot = self.bot.guild_bots[interaction.guild.id]
-        try:
-            user_with_bot_check(interaction, guild_bot)
-        except Exception as exception:
-            await self.handle_interaction_error(interaction, exception)
-            return
+    async def queue(self, interaction: discord.Interaction, send_response=True):
+        guild_bot = self.bot.get_bot(interaction)
+        await self.__execute(guild_bot, guild_bot.toggle_queue, 'Display toggled.', interaction, send_response)
 
-        try:
-            await guild_bot.previous()
-        except CommandExecutionError as error:
-            await interaction.response.send_message(error.message, ephemeral = True)
-        except:
-            await interaction.response.send_message('An undocumented error occurred.', ephemeral = True)
-        else:
-            await interaction.response.send_message('Went to previous song.', ephemeral = True)
+    async def history(self, interaction: discord.Interaction, send_response=True):
+        guild_bot = self.bot.get_bot(interaction)
+        await self.__execute(guild_bot, guild_bot.toggle_history, 'Display toggled.', interaction, send_response)
 
+    async def lyrics(self, interaction: discord.Interaction, send_response=True):
+        guild_bot = self.bot.get_bot(interaction)
+        await self.__execute(guild_bot, guild_bot.lyrics, 'Lyrics toggled.', interaction, send_response)
 
-    async def queue(self, interaction: discord.Interaction) -> None:
-        # todo: see how this behaves when ui button behaviour is changed
-        """Swaps queue display type. (short/long)"""
-        guild_bot = self.bot.guild_bots[interaction.guild.id]
-        try:
-            user_with_bot_check(interaction, guild_bot)
-        except Exception as exception:
-            await self.handle_interaction_error(interaction, exception)
-            return
+    async def shuffle(self, interaction: discord.Interaction, send_response=True):
+        guild_bot = self.bot.get_bot(interaction)
+        await self.__execute(guild_bot, guild_bot.pause, 'Shuffle toggled.', interaction, send_response)
 
-        try:
-            await guild_bot.toggle_queue()
-        except CommandExecutionError as error:
-            await interaction.response.send_message(error.message, ephemeral = True)
-        except:
-            await interaction.response.send_message('An undocumented error occurred.', ephemeral = True)
-        else:
-            await interaction.response.send_message('Queue display toggled.', ephemeral = True)
-
-
-    async def history(self, interaction: discord.Interaction) -> None:
-        # todo: see how this behaves when ui button behaviour is changed
-        """Swaps history display type. (show/hide)."""
-        guild_bot = self.bot.guild_bots[interaction.guild.id]
-        try:
-            user_with_bot_check(interaction, guild_bot)
-        except Exception as exception:
-            await self.handle_interaction_error(interaction, exception)
-            return
-
-        try:
-            await guild_bot.toggle_history()
-        except CommandExecutionError as error:
-            await interaction.response.send_message(error.message, ephemeral = True)
-        except:
-            await interaction.response.send_message('An undocumented error occurred.', ephemeral = True)
-        else:
-            await interaction.response.send_message('History toggled.', ephemeral = True)
-
-
-    async def lyrics(self, interaction: discord.Interaction) -> None:
-        """Swaps history display type. (show/hide)."""
-        guild_bot = self.bot.guild_bots[interaction.guild.id]
-        try:
-            user_with_bot_check(interaction, guild_bot)
-        except Exception as exception:
-            await self.handle_interaction_error(interaction, exception)
-            return
-
-        try:
-            await guild_bot.toggle_lyrics()
-        except CommandExecutionError as error:
-            await interaction.response.send_message(error.message, ephemeral = True)
-        except:
-            await interaction.response.send_message('An undocumented error occurred.', ephemeral = True)
-        else:
-            await interaction.response.send_message('Lyrics display toggled.', ephemeral = True)
-
-
-    async def shuffle(self, interaction: discord.Interaction):
-        """Shuffles music queue."""
-        guild_bot = self.bot.guild_bots[interaction.guild.id]
-        try:
-            user_with_bot_check(interaction, guild_bot)
-        except Exception as exception:
-            await self.handle_interaction_error(interaction, exception)
-            return
-
-        try:
-            await guild_bot.shuffle()
-        except CommandExecutionError as error:
-            await interaction.response.send_message(error.message, ephemeral = True)
-        except:
-            await interaction.response.send_message('An undocumented error occurred.', ephemeral = True)
-        else:
-            await interaction.response.send_message('Shuffle toggled.', ephemeral = True)
-
-
-    async def swap(self, interaction: discord.Interaction, song1: int, song2: int) -> None:
-        """
-        Swaps places of two songs in the queue.
-        Numbering of arguments starts with 1, 0 refers to the currently playing song.
-        Indexes starting with 0 are passed to swap method of music guild_bot.
-        """
-        guild_bot = self.bot.guild_bots[interaction.guild.id]
-        try:
-            user_with_bot_check(interaction, guild_bot)
-        except Exception as exception:
-            await self.handle_interaction_error(interaction, exception)
-            return
-
-        try:
-            await guild_bot.swap(song1, song2)
-        except CommandExecutionError as error:
-            await interaction.response.send_message(error.message, ephemeral = True)
-        except:
-            await interaction.response.send_message('An undocumented error occurred.', ephemeral = True)
-        else:
-            await interaction.response.send_message('Songs Swapped.', ephemeral = True)
-
-
-    async def pause(self, interaction: discord.Interaction) -> None:
-        """
-        Pauses if playing, unpauses if paused.
-        """
-        guild_bot = self.bot.guild_bots[interaction.guild.id]
-        try:
-            user_with_bot_check(interaction, guild_bot)
-        except Exception as exception:
-            await self.handle_interaction_error(interaction, exception)
-            return
-
-        try:
-            await guild_bot.pause()
-        except CommandExecutionError as error:
-            await interaction.response.send_message(error.message, ephemeral = True)
-        except:
-            await interaction.response.send_message('An undocumented error occurred.', ephemeral = True)
-        else:
-            await interaction.response.send_message('Player (un)paused.', ephemeral = True)
-
-
-    async def remove(self, interaction: discord.Interaction, number: int) -> None:
-        """
-        Pauses if playing, unpauses if paused.
-        """
-        guild_bot = self.bot.guild_bots[interaction.guild.id]
-        try:
-            user_with_bot_check(interaction, guild_bot)
-        except Exception as exception:
-            await self.handle_interaction_error(interaction, exception)
-            return
-
-        try:
-            await guild_bot.remove(number)
-        except CommandExecutionError as error:
-            await interaction.response.send_message(error.message, ephemeral = True)
-        except:
-            await interaction.response.send_message('An undocumented error occurred.', ephemeral = True)
-        else:
-            await interaction.response.send_message('Song removed from queue.', ephemeral = True)
-
-
-    async def goto(self, interaction: discord.Interaction, number: int) -> None:
-        """
-        Pauses if playing, unpauses if paused.
-        """
-        guild_bot = self.bot.guild_bots[interaction.guild.id]
-        try:
-            user_with_bot_check(interaction, guild_bot)
-        except Exception as exception:
-            await self.handle_interaction_error(interaction, exception)
-            return
-
-        try:
-            await guild_bot.goto(number)
-        except CommandExecutionError as error:
-            await interaction.response.send_message(error.message, ephemeral = True)
-        except:
-            await interaction.response.send_message('An undocumented error occurred.', ephemeral = True)
-        else:
-            await interaction.response.send_message('Jumped to song.', ephemeral = True)
-
-
-    # async def create(self, interaction: discord.Interaction, name: str) -> None:
-    #    """
-    #    Pauses if playing, unpauses if paused.
-    #    """
-    #    await interaction.response.send_message(
-    #        content = 'Select playlist type.',
-    #        view = CreatePlaylistButtons(name),
-    #        ephemeral = True
-    #    )
-
-
-    # async def add(self, interaction: discord.Interaction, number: int = 0) -> None:
-    #    """
-    #    Pauses if playing, unpauses if paused.
-    #    """
-    #    guild_bot = self.guild_bots[interaction.guild.id]
-
-    #    song_index = guild_bot.p_index + number
-    #    song = guild_bot.queue[song_index]
-
-    #    await interaction.response.send_message(
-    #        content = 'Select playlist type.',
-    #        view = ListSelectButtons(song),
-    #        ephemeral = True
-    #    )
+    async def pause(self, interaction: discord.Interaction, send_response=True):
+        guild_bot = self.bot.get_bot(interaction)
+        await self.__execute(guild_bot, guild_bot.pause, 'Player (un)paused.', interaction, send_response)

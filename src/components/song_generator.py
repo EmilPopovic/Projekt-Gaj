@@ -1,11 +1,7 @@
-"""
-This file is part of Shteff which is released under the GNU General Public License v3.0.
-See file LICENSE or go to <https://www.gnu.org/licenses/gpl-3.0.html> for full license details.
-"""
-
+import discord
 from colorthief import ColorThief
 from requests import get
-from youtube_dl import YoutubeDL
+import yt_dlp
 from io import BytesIO
 from datetime import timedelta
 from threading import Thread
@@ -50,17 +46,17 @@ class SongGenerator:
     last_uid = 0
 
     @staticmethod
-    def get_songs(query: str) -> list:
+    def get_songs(query: str, interaction: discord.Interaction) -> list:
         if 'https://open.spotify.com/' in query:
-            lst = [SongGenerator(song) for song in SpotifyInfo.spotify_get(query)]
+            lst = [SongGenerator(song, interaction) for song in SpotifyInfo.spotify_get(query)]
         else:
-            lst = [SongGenerator(SpotifyInfo.spotify_get(query)[0])]
+            lst = [SongGenerator(SpotifyInfo.spotify_get(query)[0], interaction)]
 
         return [song for song in lst if song.is_good]
 
-
-    def __init__(self, query):
+    def __init__(self, query, interaction: discord.Interaction):
         self.query = query
+        self.interaction = interaction
         self.error = None
 
         # the uid attribute makes every instance of Song class
@@ -88,15 +84,13 @@ class SongGenerator:
                 # TODO: if song is YouTube link
                 self.is_good = False
                 return
-
             else:
                 self.set_spotify_info(query)
 
         elif isinstance(query, SpotifySong):
             self.set_spotify_secondary(query)
 
-
-    def set_spotify_info(self, query: str) -> bool|None:
+    def set_spotify_info(self, query: str) -> bool | None:
         try:
             if 'open.spotify.com' in query:
                 info: SpotifySong = SpotifyInfo.spotify_get(query)[0]
@@ -109,7 +103,6 @@ class SongGenerator:
 
         self.set_spotify_secondary(info)
 
-
     def set_spotify_secondary(self, info: SpotifySong) -> None:
         self.name = info.name
         self.authors = info.authors
@@ -118,11 +111,10 @@ class SongGenerator:
         self.thumbnail_link = info.thumbnail_url
         self.spotify_link = info.url
 
-
-    def get_source_color_lyrics(self) -> dict:
+    def set_source_color_lyrics(self):
         # multithreading calculating color and extracting source info to save time
         source_thread = Thread(target = self.set_source, args = ())
-        color_thread = Thread(target = self.set_color, args = ())
+        color_thread  = Thread(target = self.set_color,  args = ())
         lyrics_thread = Thread(target = self.set_lyrics, args = ())
 
         source_thread.start()
@@ -132,13 +124,6 @@ class SongGenerator:
         source_thread.join()
         color_thread.join()
         lyrics_thread.join()
-
-        return {
-            'source': self.source,
-            'color': self.color,
-            'lyrics': self.lyrics
-        }
-
 
     def set_source(self) -> None:
         if self.source is not None:
@@ -153,7 +138,6 @@ class SongGenerator:
         self.source = yt_info['source']
         self.yt_id = yt_info['id']
         self.yt_link = f'https://www.youtube.com/watch?v={self.yt_id}'
-
 
     def set_color(self) -> None:
         if self.color is not None:
@@ -170,7 +154,6 @@ class SongGenerator:
         palette = color_thief.get_palette(color_count = 5)
         self.color = palette[0]
 
-
     def set_lyrics(self) -> None:
         if self.lyrics is not None:
             return
@@ -180,11 +163,9 @@ class SongGenerator:
         except AttributeError:
             self.lyrics = 'No lyrics found for this song.'
 
-
     def to_msg_format(self) -> str:
         authors = ''.join(author.name + ', ' for author in self.authors).strip(', ')
         return f'{authors} - {self.name} ({self.timedelta_duration_to_str()})'
-
 
     def timedelta_duration_to_str(self) -> str:
         """
@@ -196,12 +177,13 @@ class SongGenerator:
         seconds = self.duration.seconds % 60
         return f'{minutes}:{seconds:02}'
 
-
     @staticmethod
     def search_yt(query: str) -> dict:
-        with YoutubeDL(SongGenerator.YDL_OPTIONS) as ydl:
+        with yt_dlp.YoutubeDL(SongGenerator.YDL_OPTIONS) as ydl:
             try:
                 info = ydl.extract_info(f'ytsearch:{query}', download = False)['entries'][0]
+                if info['formats'][0]['url'] is None:
+                    raise YTDLError(query)
             except:
                 raise YTDLError(query)
 
@@ -211,18 +193,14 @@ class SongGenerator:
             'id': info['id']
         }
 
-
     def __eq__(self, other) -> bool:
         return self.uid == other.uid
-
 
     def __gt__(self, other) -> bool:
         return self.uid > other.uid
 
-
     def __lt__(self, other) -> bool:
         return self.uid < other.uid
 
-
     def __repr__(self) -> str:
-        return f'SongGenerator object | name: {self.name:<60} | url: {self.spotify_link}'
+        return f'SongGenerator object | name: {self.name} | url: {self.spotify_link}'

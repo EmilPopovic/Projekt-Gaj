@@ -1,8 +1,3 @@
-"""
-This file is part of Shteff which is released under the GNU General Public License v3.0.
-See file LICENSE or go to <https://www.gnu.org/licenses/gpl-3.0.html> for full license details.
-"""
-
 import asyncio
 import random
 
@@ -10,7 +5,8 @@ import discord
 from discord.ext import commands
 
 from .song_generator import SongGenerator
-from utils import *
+from utils import CommandExecutionError, FailedToConnectError, InteractionResponder as Responder
+from utils.colors import c_err, c_channel
 
 
 class Player(commands.Cog):
@@ -30,12 +26,10 @@ class Player(commands.Cog):
         'options': '-vn'
     }
 
-
     def __init__(
             self,
             guild_bot,
-            guild: discord.guild.Guild
-    ):
+            guild: discord.guild.Guild):
         self.guild: discord.guild.Guild = guild
         self.guild_bot = guild_bot
 
@@ -62,7 +56,6 @@ class Player(commands.Cog):
         self.voice_channel: discord.VoiceChannel | None = None
 
         # todo: race condition event loop shit
-
 
     def __reset_bot_states(self) -> None:
         """
@@ -95,7 +88,6 @@ class Player(commands.Cog):
         self.voice_channel = None
 
         self.command_queue = []
-
 
     async def shuffle(self) -> None:
         """
@@ -145,7 +137,6 @@ class Player(commands.Cog):
 
         await self.guild_bot.update_msg()
 
-
     async def previous(self) -> None:
         """
         Skips to the previous song in the queue.
@@ -160,7 +151,6 @@ class Player(commands.Cog):
         self.p_index -= 2
         self.voice_client.pause()
         await self.__play_next()
-
 
     async def pause(self) -> None:
         """
@@ -182,7 +172,6 @@ class Player(commands.Cog):
             self.voice_client.resume()
 
         await self.guild_bot.update_msg()
-
 
     async def skip(self) -> None:
         """
@@ -211,7 +200,6 @@ class Player(commands.Cog):
             await self.loop()
 
         await self.__play_next()
-
 
     async def loop(self) -> None:
         """
@@ -244,7 +232,6 @@ class Player(commands.Cog):
             self.is_looped_single = True
 
         await self.guild_bot.update_msg()
-
 
     async def clear(self) -> None:
         """
@@ -281,8 +268,7 @@ class Player(commands.Cog):
 
         await self.guild_bot.update_msg()
 
-
-    async def dc(self) -> None:
+    async def dc(self, disconnect=True) -> None:
         """
         Disconnects the voice client and resets certain states and flags.
 
@@ -291,16 +277,15 @@ class Player(commands.Cog):
         command message to reflect the changes.
         """
         if self.voice_client is None:
-            raise CommandExecutionError('Bot is not in a voice channel.')
+            return
 
-        await self.voice_client.disconnect()
+        if disconnect: await self.voice_client.disconnect()
         await self.guild_bot.delete_lyrics_message()
 
         self.__reset_bot_states()
         self.guild_bot.reset_flags()
 
         await self.guild_bot.update_msg()
-
 
     async def swap(self, i: int, j: int) -> None:
         """
@@ -332,7 +317,6 @@ class Player(commands.Cog):
         self.queue[i], self.queue[j] = self.queue[j], self.queue[i]
         await self.guild_bot.update_msg()
 
-
     async def remove(self, n: int) -> None:
         """
         Removes song at index `n` in the queue.
@@ -349,7 +333,6 @@ class Player(commands.Cog):
 
         self.queue.pop(n + self.p_index)
         await self.guild_bot.update_msg()
-
 
     async def goto(self, n: int) -> None:
         if n <= 0:
@@ -369,8 +352,11 @@ class Player(commands.Cog):
 
         await self.skip()
 
-
-    async def add_to_queue(self, query: str, voice_channel: discord.VoiceChannel, number: int):
+    async def add_to_queue(self,
+                           query: str,
+                           voice_channel: discord.VoiceChannel,
+                           number: int,
+                           interaction: discord.Interaction):
         """
         Add songs to the music queue and potentially start playing them.
 
@@ -385,7 +371,7 @@ class Player(commands.Cog):
 
         self.voice_channel = voice_channel
 
-        songs: list[SongGenerator] = SongGenerator.get_songs(query)
+        songs: list[SongGenerator] = SongGenerator.get_songs(query, interaction)
         if number is None or number >= len(self.queue) - self.p_index:
             self.queue.extend(songs)
         else:
@@ -398,7 +384,6 @@ class Player(commands.Cog):
             await self.__play_next()
 
         await self.guild_bot.update_msg()
-
 
     async def __join(self):
         """
@@ -419,7 +404,6 @@ class Player(commands.Cog):
         else:
             await self.voice_client.move_to(self.voice_channel)
 
-
     async def __play_next(self) -> None:
         """
         Plays the next song in the queue. If the end of the queue is reached, the player will
@@ -432,32 +416,29 @@ class Player(commands.Cog):
         song will be played.
         """
         if self.queue[self.p_index + 1:]:
-            # do not move pointer if looped single
-            # move pointer if not.is_looped_single
-            if not self.is_looped_single:
+            if not self.is_looped_single and self.is_playing or self.p_index == -1:
                 self.p_index += 1
-            # move to start of loop when we get to the end of self.queue
+
             if self.is_looped and self.p_index == len(self.queue):
                 self.p_index = self.loop_start_index
 
-            # set source and color of current SongGenerator object
-            # if not already set
-            current = self.queue[self.p_index]
-            current.set_lyrics()
-            m_url = current.get_source_color_lyrics()['source']
+            current: SongGenerator = self.queue[self.p_index]
+            current.set_source_color_lyrics()
+            source: str = current.source
+            interaction: discord.Interaction = current.interaction
 
-            # if YouTube extract fails
-            if not current.is_good:
-                print(f'{c_err()} invalid song object: {current}')
-                self.queue.pop(self.p_index)
-                # skip current track
-                await self.skip()
-
-            # join voice_client
             try:
                 await self.__join()
             except FailedToConnectError:
                 print(f'{c_err()} failed to connect to vc in guild {c_channel(self.guild.id)}')
+                await Responder.send('Failed to join voice channel.', interaction, followup = True, fail = True)
+                return
+
+            if not current.is_good:
+                print(f'{c_err()} invalid song object: {current}')
+                await Responder.send(f'Cannot find "{current.name}".', interaction, followup = True, fail = True)
+                self.queue.pop(self.p_index)
+                await self.skip()
                 return
 
             self.is_playing = True
@@ -468,12 +449,13 @@ class Player(commands.Cog):
             # for the love of all that is good don't touch the lines below
             loop = asyncio.get_event_loop()
             self.voice_client.play(
-                discord.FFmpegPCMAudio(m_url, **self.ffmpeg_options),
+                discord.FFmpegPCMAudio(source, **self.ffmpeg_options),
                 after = lambda _: loop.create_task(self.__play_next())
             )
 
         else:
             # if we finished playing the last song in queue
             # todo: i don't know what this is doing but it doesn't do what it should
+            self.p_index += 1
             self.is_playing = False
             await self.guild_bot.update_msg()

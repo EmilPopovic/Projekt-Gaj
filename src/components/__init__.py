@@ -5,6 +5,7 @@ from .help_cog import HelpCog
 from .list_select import ListAdder
 from .player import Player
 from .song_generator import SongGenerator
+from .command_buttons import CommandButtons
 
 print(
     """
