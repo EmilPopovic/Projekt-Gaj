@@ -1,8 +1,3 @@
-"""
-This file is part of Shteff which is released under the GNU General Public License v3.0.
-See file LICENSE or go to <https://www.gnu.org/licenses/gpl-3.0.html> for full license details.
-"""
-
 import json
 
 from requests import get, post
@@ -30,7 +25,7 @@ class Author:
         return f'{name_with_url}\n' if new_line else name_with_url
 
     def __repr__(self) -> str:
-        return f'Name: {self.name:<25} | url: {self.url}'
+        return f'Name: {self.name} | url: {self.url}'
 
 
 @dataclass
@@ -43,8 +38,7 @@ class SpotifySong:
             thumbnail_url=None,
             duration=None,
             audio_features=None,
-            error=None
-    ):
+            error=None):
         self.name = name
         self.url = url
         self.authors = authors
@@ -61,24 +55,18 @@ class SpotifyInfo:
     # TODO: refresh token in regular intervals?
     spotify_token = ''
 
-
     @classmethod
     def spotify_get(cls, query) -> list[SpotifySong]:
         if '/track/' in query:
             return [cls.__get_track(query)]
-
         elif '/album/' in query:
             return cls.__get_album(query)
-
         elif '/playlist/' in query:
             return cls.__get_playlist(query)
-
         elif '/artist/' in query:
             return cls.__get_artist(query)
-
         else:
             return [cls.__search_spotify(query)]
-
 
     @classmethod
     def __get_track(cls, url: str) -> SpotifySong:
@@ -103,10 +91,8 @@ class SpotifyInfo:
                 duration = timedelta(milliseconds = data['duration_ms'])
             )
             return song
-
         except KeyError:
             raise SpotifyExtractError(data)
-
 
     @classmethod
     def __search_spotify(cls, query: str) -> SpotifySong:
@@ -132,10 +118,8 @@ class SpotifyInfo:
                 thumbnail_url = item['album']['images'][0]['url'],
                 duration = timedelta(milliseconds = item['duration_ms'])
             )
-
         except KeyError:
             raise SpotifyExtractError(data)
-
 
     @classmethod
     def __get_album(cls, url: str) -> list[SpotifySong]:
@@ -163,10 +147,8 @@ class SpotifyInfo:
                 )
                 for item in data['items']
             ]
-
         except KeyError:
             raise SpotifyExtractError(data)
-
 
     @classmethod
     def __get_playlist(cls, url: str) -> list[SpotifySong]:
@@ -193,10 +175,8 @@ class SpotifyInfo:
                 )
                 for item in data['items']
             ]
-
         except KeyError:
             raise SpotifyExtractError(data)
-
 
     # todo: this
     # @classmethod
@@ -209,7 +189,6 @@ class SpotifyInfo:
     #
     #     # radio link: https://open.spotify.com/playlist/37i9dQZF1E8HPdZIjk7v8x
     #     # track link: 2auyE53lrWpCM47XXky6X0
-
 
     @classmethod
     def __get_artist(cls, url) -> list[SpotifySong]:
@@ -236,10 +215,8 @@ class SpotifyInfo:
                 )
                 for item in data['tracks']
             ]
-
         except KeyError:
             raise SpotifyExtractError(data)
-
 
     @classmethod
     def __get_response(cls, query: str) -> dict:
@@ -251,7 +228,6 @@ class SpotifyInfo:
             }
         )
         return response.json()
-
 
     @classmethod
     def __call_refresh(cls) -> None:
@@ -267,7 +243,6 @@ class SpotifyInfo:
         )
         response_json = response.json()
         cls.spotify_token = response_json['access_token']
-
 
 # todo: finish this
 # import json
