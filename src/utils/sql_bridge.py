@@ -40,7 +40,6 @@ class Database:
         except Error as err:
             print(f'{c_err()} {err}')
 
-
     def execute_query(self, query):
         """
         Executes specified MySQL query.
@@ -57,7 +56,6 @@ class Database:
             print("Query successful")
         except Error as err:
             print(f"Error: '{err}'")
-
 
     def read_query(self, query):
         """
@@ -93,7 +91,6 @@ class Database:
 
         return self.read_query(query)[0][0]
 
-
     def update_channel_id(self, guild_id, channel_id):
         """
         Updates the channel_id for a given guild_id in the 'guilds' table.
@@ -110,7 +107,6 @@ class Database:
 
         self.execute_query(query)
 
-
     def add_channel_id(self, guild_id, channel_id):
         """
         Adds a new guild_id and channel_id pair to the 'guilds' table.
@@ -126,10 +122,8 @@ class Database:
 
         self.execute_query(query)
 
-
     def get_server_lists(self, guild_id):
         return
-
 
     def get_user_lists(self, user_id):
         query = f"""SELECT list_name FROM personal_playlists WHERE list_owner={user_id};"""
@@ -138,13 +132,11 @@ class Database:
         lists = [elm[0] for elm in retval]
         return lists
 
-
     def add_to_server_playlist(self, song, user_id, guild_id, playlist_name):
         return
         song_name = song.name
         song_author = song.author
         pass
-
 
     def add_to_personal_playlist(self, song, user_id, playlist_name):
         return
@@ -155,7 +147,6 @@ class Database:
 
         self.execute_query(query)
         pass
-
 
     def create_server_playlist(self, guild_id, playlist_name):
         query = f"""INSERT INTO server_playlists (guild_id, list_name) VALUES ({guild_id}, {playlist_name});"""
