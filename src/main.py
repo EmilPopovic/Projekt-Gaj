@@ -17,19 +17,18 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import sys
 import json
-
 import discord
 from discord import app_commands
 from discord.ext import commands
 
 from components import (
-    AntiSpamCog,
     HelpCog,
     CommandHandler,
     GuildBot,
     CommandButtons
 )
-from utils import *
+from utils import Database, PermissionsCheck
+from utils.colors import c_err, c_guild, c_event, c_login, c_user
 
 with open('secrets.json', 'r') as f:
     data = json.load(f)
@@ -155,6 +154,17 @@ class MainBot(commands.AutoShardedBot):
                 await guild_bot.dc(disconnect = False)
 
         @self.event
+        async def on_message(message):
+            if message.author == self.user: return
+
+            guild_id = message.guild.id
+            guild_bot = self.guild_bots.get(guild_id, None)
+            command_channel_id = guild_bot.command_channel_id
+
+            if message.channel.id == command_channel_id:
+                await message.delete()
+
+        @self.event
         async def on_guild_join(guild):
             self.guild_bots[guild.id] = await GuildBot(guild)
             # todo: delete GuildBot and database entry when leaving guild
@@ -175,14 +185,12 @@ class MainBot(commands.AutoShardedBot):
             sys.exit()
 
         self.remove_command('help')
-        await self.add_cog(AntiSpamCog(self))
 
         # create music cog for every guild bot is in
         for guild in self.guilds:
             self.guild_bots[guild.id] = await GuildBot(guild)
 
         print(f'{c_login()} as {self.user} with user id: {c_user(self.user.id)}')
-
 
     def get_bot(self, interaction):
         return self.guild_bots[interaction.guild.id]
