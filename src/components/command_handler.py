@@ -26,14 +26,14 @@ class CommandHandler:
                         func,
                         success_msg: str,
                         interaction: discord.Interaction,
-                        send_response: bool,
+                        send_response: bool = True,
                         args=None,
-                        kwargs=None):
+                        kwargs=None) -> bool:
         try:
             user_with_bot_check(interaction, guild_bot)
         except Exception as exception:
             await self.handle_interaction_error(interaction, exception)
-            return
+            return False
 
         try:
             if args is None and kwargs is None:
@@ -46,10 +46,13 @@ class CommandHandler:
                 await func(*args, **kwargs)
         except CommandExecutionError as error:
             await Responder.send(error.message, interaction, fail = True)
+            return False
         except Exception as _:
             await Responder.send('An undocumented error occurred.', interaction, fail = True)
+            return False
         else:
             if send_response: await Responder.send(success_msg, interaction)
+            return True
 
     async def play(self, interaction: discord.Interaction, song: str, place: int = None, send_response=True):
         """If user calling the command is in a voice channel, adds wanted song/list to queue of that guild."""
@@ -85,54 +88,67 @@ class CommandHandler:
     async def swap(self, interaction: discord.Interaction, song1: int, song2: int, send_response=True):
         guild_bot = self.bot.guild_bots[interaction.guild.id]
         args = song1, song2
-        await self.__execute(guild_bot, guild_bot.swap, 'Songs swapped', interaction, send_response, args)
+        success = await self.__execute(guild_bot, guild_bot.swap, 'Songs swapped', interaction, send_response, args)
+        return success
 
     async def remove(self, interaction: discord.Interaction, number: int, send_response=True):
         guild_bot = self.bot.guild_bots[interaction.guild.id]
         args = number
-        await self.__execute(guild_bot, guild_bot.remove, 'Song removed', interaction, send_response, args)
+        success = await self.__execute(guild_bot, guild_bot.remove, 'Song removed', interaction, send_response, args)
+        return success
 
     async def goto(self, interaction: discord.Interaction, number: int, send_response=True):
         guild_bot = self.bot.guild_bots[interaction.guild.id]
         args = number
-        await self.__execute(guild_bot, guild_bot.goto, 'Jumped to song.', interaction, send_response, args)
+        success = await self.__execute(guild_bot, guild_bot.goto, 'Jumped to song.', interaction, send_response, args)
+        return success
 
     async def skip(self, interaction: discord.Interaction, send_response=True):
         guild_bot = self.bot.get_bot(interaction)
-        await self.__execute(guild_bot, guild_bot.skip, 'Skipped to next song.', interaction, send_response)
+        success = await self.__execute(guild_bot, guild_bot.skip, 'Skipped to next song.', interaction, send_response)
+        return success
 
     async def loop(self, interaction: discord.Interaction, send_response=True):
         guild_bot = self.bot.get_bot(interaction)
-        await self.__execute(guild_bot, guild_bot.loop, 'Loop toggled.', interaction, send_response)
+        success = await self.__execute(guild_bot, guild_bot.loop, 'Loop toggled.', interaction, send_response)
+        return success
 
     async def clear(self, interaction: discord.Interaction, send_response=True):
         guild_bot = self.bot.get_bot(interaction)
-        await self.__execute(guild_bot, guild_bot.clear, 'Queue cleared.', interaction, send_response)
+        success = await self.__execute(guild_bot, guild_bot.clear, 'Queue cleared.', interaction, send_response)
+        return success
 
     async def disconnect(self, interaction: discord.Interaction, send_response=True):
         guild_bot = self.bot.get_bot(interaction)
-        await self.__execute(guild_bot, guild_bot.dc, 'Bot disconnected.', interaction, send_response)
+        success = await self.__execute(guild_bot, guild_bot.dc, 'Bot disconnected.', interaction, send_response)
+        return success
 
     async def previous(self, interaction: discord.Interaction, send_response=True):
         guild_bot = self.bot.get_bot(interaction)
-        await self.__execute(guild_bot, guild_bot.previous, 'Went to previous song.', interaction, send_response)
+        success = await self.__execute(guild_bot, guild_bot.previous, 'Went to previous song.', interaction, send_response)
+        return success
 
     async def queue(self, interaction: discord.Interaction, send_response=True):
         guild_bot = self.bot.get_bot(interaction)
-        await self.__execute(guild_bot, guild_bot.toggle_queue, 'Display toggled.', interaction, send_response)
+        success = await self.__execute(guild_bot, guild_bot.toggle_queue, 'Display toggled.', interaction, send_response)
+        return success
 
     async def history(self, interaction: discord.Interaction, send_response=True):
         guild_bot = self.bot.get_bot(interaction)
-        await self.__execute(guild_bot, guild_bot.toggle_history, 'Display toggled.', interaction, send_response)
+        success = await self.__execute(guild_bot, guild_bot.toggle_history, 'Display toggled.', interaction, send_response)
+        return success
 
     async def lyrics(self, interaction: discord.Interaction, send_response=True):
         guild_bot = self.bot.get_bot(interaction)
-        await self.__execute(guild_bot, guild_bot.lyrics, 'Lyrics toggled.', interaction, send_response)
+        success = await self.__execute(guild_bot, guild_bot.toggle_lyrics, 'Lyrics toggled.', interaction, send_response)
+        return success
 
     async def shuffle(self, interaction: discord.Interaction, send_response=True):
         guild_bot = self.bot.get_bot(interaction)
-        await self.__execute(guild_bot, guild_bot.pause, 'Shuffle toggled.', interaction, send_response)
+        success = await self.__execute(guild_bot, guild_bot.pause, 'Shuffle toggled.', interaction, send_response)
+        return success
 
     async def pause(self, interaction: discord.Interaction, send_response=True):
         guild_bot = self.bot.get_bot(interaction)
-        await self.__execute(guild_bot, guild_bot.pause, 'Player (un)paused.', interaction, send_response)
+        success = await self.__execute(guild_bot, guild_bot.pause, 'Player (un)paused.', interaction, send_response)
+        return success

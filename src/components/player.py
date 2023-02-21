@@ -1,6 +1,5 @@
 import asyncio
 import random
-
 import discord
 from discord.ext import commands
 
@@ -26,10 +25,9 @@ class Player(commands.Cog):
         'options': '-vn'
     }
 
-    def __init__(
-            self,
-            guild_bot,
-            guild: discord.guild.Guild):
+    def __init__(self,
+                 guild_bot,
+                 guild: discord.guild.Guild):
         self.guild: discord.guild.Guild = guild
         self.guild_bot = guild_bot
 
@@ -125,7 +123,7 @@ class Player(commands.Cog):
 
                 new_unshuffled = [
                     song for song in self.unshuffled_queue
-                    if song not in self.skipped_while_shuffled and song != current
+                    if song not in self.skipped_while_shuffled or song != current
                 ]
 
                 self.queue = never_shuffled_part + new_skipped_unshuffled + [current] + new_unshuffled
@@ -268,7 +266,7 @@ class Player(commands.Cog):
 
         await self.guild_bot.update_msg()
 
-    async def dc(self, disconnect=True) -> None:
+    async def dc(self, disconnect: bool = True) -> None:
         """
         Disconnects the voice client and resets certain states and flags.
 

@@ -1,47 +1,15 @@
 import discord
 from colorthief import ColorThief
 from requests import get
-import yt_dlp
 from io import BytesIO
 from datetime import timedelta
 from threading import Thread
 
-from api.spotify import (
-    SpotifyInfo,
-    SpotifySong,
-    Author
-)
-from utils import (
-    SpotifyExtractError,
-    YTDLError
-)
-from api.genius import GeniusInfo
+from api import SpotifyInfo, SpotifySong, Author, YouTubeInfo, GeniusInfo
+from utils import SpotifyExtractError, YTDLError
 
 
 class SongGenerator:
-    # TODO: write docstring
-    YDL_OPTIONS = {
-        'format': 'bestaudio',
-        'audioquality': '0',
-        'audio_format': 'mp3',
-        'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
-        'restrictfilenames': True,
-        'noplaylist': True,
-        'nocheckcertificate': True,
-        'ignoreerrors': False,
-        'logtostderr': False,
-        'quiet': True,
-        'no_warnings': True,
-        'default_search': 'auto',
-        'source_address': '0.0.0.0',
-        'geo_bypass': True,
-        'skip_download': True,
-        'youtube_skip_dash_manifest': True,
-        'playlist_end': 1,
-        'max_downloads': 1,
-        'force_generic_extractor': True
-    }
-
     # unique identifier of a SongGenerator object
     last_uid = 0
 
@@ -130,14 +98,17 @@ class SongGenerator:
             return
 
         try:
-            yt_info = self.search_yt(f'{self.author} - {self.name}')
+            yt_info = YouTubeInfo(f'{self.author} - {self.name}')
         except YTDLError:
             self.is_good = False
             return
 
-        self.source = yt_info['source']
-        self.yt_id = yt_info['id']
+        self.source = yt_info.source
+        self.yt_id = yt_info.id
         self.yt_link = f'https://www.youtube.com/watch?v={self.yt_id}'
+
+        if self.source == 'source':
+            self.is_good = False
 
     def set_color(self) -> None:
         if self.color is not None:
@@ -176,22 +147,6 @@ class SongGenerator:
         minutes = self.duration.seconds // 60
         seconds = self.duration.seconds % 60
         return f'{minutes}:{seconds:02}'
-
-    @staticmethod
-    def search_yt(query: str) -> dict:
-        with yt_dlp.YoutubeDL(SongGenerator.YDL_OPTIONS) as ydl:
-            try:
-                info = ydl.extract_info(f'ytsearch:{query}', download = False)['entries'][0]
-                if info['formats'][0]['url'] is None:
-                    raise YTDLError(query)
-            except:
-                raise YTDLError(query)
-
-        return {
-            'source': info['formats'][0]['url'],
-            'title': info['title'],
-            'id': info['id']
-        }
 
     def __eq__(self, other) -> bool:
         return self.uid == other.uid
