@@ -18,14 +18,16 @@ class Database:
     def __init__(self):
         """
         Establishes connection to MySQL server.
+        
         Parameters (taken from secrets.json):
-        host_name (str): hostname for the MySQL server.
-        user_name (str): username for the MySQL server.
-        user_password (str): password for the MySQL server.
-        db_name (str): name of the database to connect to.
-        port_number (int): port number for the MySQL server.
+            host_name (str): hostname for the MySQL server.
+            user_name (str): username for the MySQL server.
+            user_password (str): password for the MySQL server.
+            db_name (str): name of the database to connect to.
+            port_number (int): port number for the MySQL server.
+        
         Returns:
-        connection: a connection object to the MySQL server.
+            connection: a connection object to the MySQL server.
         """
         self.connection = None
         try:
@@ -43,11 +45,12 @@ class Database:
     def execute_query(self, query):
         """
         Executes specified MySQL query.
+        
         Parameters:
-        connection (object): a connection object to the MySQL server.
-        query (str): the MySQL query to execute.
+            query (str): the MySQL query to execute.
+        
         Returns:
-        None
+            None
         """
         cursor = self.connection.cursor()
         try:
@@ -60,11 +63,12 @@ class Database:
     def read_query(self, query):
         """
         Executes specified MySQL SELECT query and returns the result.
+        
         Parameters:
-        connection (object): a connection object to the MySQL server.
-        query (str): the MySQL SELECT query to execute.
+            query (str): the MySQL SELECT query to execute.
+        
         Returns:
-        result: a list of tuples containing the query result.
+            result: a list of tuples containing the query result.
         """
         cursor = self.connection.cursor()
         result = None
@@ -79,11 +83,12 @@ class Database:
     def get_channel_id(self, guild_id):
         """
         Retrieves the channel_id for a given guild_id from the 'guilds' table.
+        
         Parameters:
-        connection (object): a connection object to the MySQL server.
-        guild_id (int): the guild_id to look up.
+            guild_id (int): the guild_id to look up.
+        
         Returns:
-        channel_id (int): the channel_id for the given guild_id.
+            channel_id (int): the channel_id for the given guild_id.
         """
         query = f"""SELECT channel_id
                     FROM guilds 
@@ -94,12 +99,13 @@ class Database:
     def update_channel_id(self, guild_id, channel_id):
         """
         Updates the channel_id for a given guild_id in the 'guilds' table.
+        
         Parameters:
-        connection (object): a connection object to the MySQL server.
-        guild_id (int): the guild_id to update.
-        channel_id (int): the new channel_id for the given guild_id.
+            guild_id (int): the guild_id to update.
+            channel_id (int): the new channel_id for the given guild_id.
+        
         Returns:
-        None
+            None
         """
         query = f"""UPDATE guilds
                     SET channel_id = {channel_id}
@@ -110,49 +116,163 @@ class Database:
     def add_channel_id(self, guild_id, channel_id):
         """
         Adds a new guild_id and channel_id pair to the 'guilds' table.
+        
         Parameters:
-        connection (object): a connection object to the MySQL server.
-        guild_id (int): the guild_id to add.
-        channel_id (int): the channel_id for the given guild_id.
+            guild_id (int): the guild_id to add.
+            channel_id (int): the channel_id for the given guild_id.
+        
         Returns:
-        None
+            None
         """
         query = f"""INSERT INTO guilds(guild_id, channel_id) 
                     VALUES ({guild_id}, {channel_id})"""
 
         self.execute_query(query)
 
+
     def get_server_lists(self, guild_id):
-        return
+        """
+        Retrieves a list of playlists for a given server.
+
+        Parameters:
+            guild_id (int): The ID of the server to retrieve playlists for.
+
+        Returns:
+            list: A list of playlist names for the specified server.
+        """
+        query = f"""SELECT playlist_name FROM ServerPlaylists WHERE guild_id={guild_id};"""
+        
+        retval = self.execute_query(query)
+        lists = [elm[0] for elm in retval]
+        return query
+
 
     def get_user_lists(self, user_id):
-        query = f"""SELECT list_name FROM personal_playlists WHERE list_owner={user_id};"""
+        """
+        Retrieves a list of personal playlists for a given user.
+
+        Parameters:
+            user_id (int): The ID of the user to retrieve playlists for.
+
+        Returns:
+            list: A list of playlist names for the specified user.
+        """
+        query = f"""SELECT playlist_name FROM PersonalPlaylists WHERE user_id={user_id};"""
 
         retval = self.read_query(query)
         lists = [elm[0] for elm in retval]
         return lists
 
-    def add_to_server_playlist(self, song, user_id, guild_id, playlist_name):
-        return
-        song_name = song.name
-        song_author = song.author
-        pass
+
+    def get_song_id(self, song):
+        """
+        Retrieves the ID of a song from the database. If the song does not exist in the database, it is added first.
+
+        Parameters:
+            song (Song): The Song object to retrieve the ID for.
+
+        Returns:
+            int: The ID of the specified song.
+        """
+        # Check if the song already exists in the database
+        query1 = f"""SELECT song_id FROM Songs WHERE song_name={song.name}, song_author={song.author}"""
+        song_id = self.read_query(query1)
+
+        # If the song does not exist, add it to the database
+        if not song_id:
+            query2 = f"""INSERT INTO Songs(song_name, song_author, song_link) VALUES ({song.name}, {song.author}, {song.yt_link});"""
+            self.execute_query(query2)
+            query3 = f"""SELECT song_id FROM Songs WHERE song_name={song.name}, song_author={song.author}"""
+            song_id = self.read_query(query3)
+
+        # Return the ID of the song
+        return song_id
+
+
+    def add_to_server_playlist(self, song, guild_id, playlist_name):
+        """
+        Adds a song to a server playlist in the database.
+
+        Parameters:
+            song (Song): The Song object to add to the playlist.
+            guild_id (int): The ID of the server the playlist belongs to.
+            playlist_name (str): The name of the playlist to add the song to.
+
+        Returns:
+            None
+        """
+        # Get the ID of the song from the database
+        song_id = self.get_song_id(song)
+
+        # Construct and execute the query to add the song to the playlist
+        query = f"""INSERT INTO {playlist_name}_{guild_id}(actual_id) VALUES ({song_id})"""
+        self.execute_query(query)
+
+        # Print a success message
+        print("Song successfully added to playlist.")
+
 
     def add_to_personal_playlist(self, song, user_id, playlist_name):
-        return
-        song_name = song.name
-        song_author = song.author
+        """
+        Adds a song to a personal playlist in the database.
 
-        query = f""""""
+        Parameters:
+            song (Song): The Song object to add to the playlist.
+            user_id (int): The ID of the user the playlist belongs to.
+            playlist_name (str): The name of the playlist to add the song to.
 
+        Returns:
+            None
+        """
+        # Get the ID of the song from the database
+        song_id = self.get_song_id(song)
+
+        # Construct and execute the query to add the song to the playlist
+        query = f"""INSERT INTO {playlist_name}_{user_id}(actual_id) VALUES ({song_id})"""
         self.execute_query(query)
-        pass
+
+        # Print a success message
+        print("Song successfully added to playlist.")
+
 
     def create_server_playlist(self, guild_id, playlist_name):
-        query = f"""INSERT INTO server_playlists (guild_id, list_name) VALUES ({guild_id}, {playlist_name});"""
+        """
+        Creates a new server playlist table in the database.
+
+        Parameters:
+            guild_id (int): The ID of the server the playlist belongs to.
+            playlist_name (str): The name of the new playlist.
+
+        Returns:
+            None
+        """
+    # Construct and execute the query to create the new playlist table
+        query = f"""CREATE TABLE {playlist_name}_{guild_id}(
+            local_id int NOT NULL auto_increment,
+            actual_id int NOT NULL UNIQUE,
+            PRIMARY KEY(local_id),
+            FOREIGN KEY (actual_id) REFERENCES Songs(song_id) ON DELETE CASCADE
+            );"""
         self.execute_query(query)
 
 
     def create_personal_playlist(self, user_id, playlist_name):
-        query = f"""INSERT INTO personal_playlists (list_name, list_owner) VALUES({playlist_name}, {user_id});"""
+        """
+        Creates a new personal playlist table in the database.
+
+        Parameters:
+            user_id (int): The ID of the user the playlist belongs to.
+            playlist_name (str): The name of the new playlist.
+
+        Returns:
+            None
+        """
+        # Construct and execute the query to create the new playlist table
+        query = f"""CREATE TABLE {playlist_name}_{user_id}(
+            local_id int NOT NULL auto_increment,
+            actual_id int NOT NULL UNIQUE,
+            PRIMARY KEY(local_id),
+            FOREIGN KEY (actual_id) REFERENCES Songs(song_id) ON DELETE CASCADE
+            );"""
         self.execute_query(query)
+
