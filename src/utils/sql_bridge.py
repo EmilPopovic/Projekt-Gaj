@@ -191,7 +191,7 @@ class Database:
         song_id = self.get_song_id(song)
 
         # Construct and execute the query to add the song to the playlist
-        query = f"""INSERT INTO {playlist_name}_{guild_id}(actual_id) VALUES ({song_id})"""
+        query = f"""INSERT INTO `{playlist_name}_{guild_id}`(actual_id) VALUES ({song_id})"""
         self.execute_query(query)
 
         # Print a success message
@@ -211,7 +211,7 @@ class Database:
         song_id = self.get_song_id(song)
 
         # Construct and execute the query to add the song to the playlist
-        query = f"""INSERT INTO {playlist_name}_{user_id}(actual_id) VALUES ({song_id})"""
+        query = f"""INSERT INTO `{playlist_name}_{user_id}`(actual_id) VALUES ({song_id})"""
         self.execute_query(query)
 
         # Print a success message
@@ -227,7 +227,7 @@ class Database:
             None
         """
         # Construct and execute the query to create the new playlist table
-        query = f"""CREATE TABLE {playlist_name}_{guild_id}(
+        query = f"""CREATE TABLE `{playlist_name}_{guild_id}`(
             local_id int NOT NULL auto_increment,
             actual_id int NOT NULL UNIQUE,
             PRIMARY KEY(local_id),
@@ -245,7 +245,7 @@ class Database:
             None
         """
         # Construct and execute the query to create the new playlist table
-        query = f"""CREATE TABLE {playlist_name}_{user_id}(
+        query = f"""CREATE TABLE `{playlist_name}_{user_id}`(
             local_id int NOT NULL auto_increment,
             actual_id int NOT NULL UNIQUE,
             PRIMARY KEY(local_id),
