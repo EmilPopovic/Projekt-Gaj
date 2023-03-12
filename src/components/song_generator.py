@@ -17,6 +17,8 @@ class SongGenerator:
     def get_songs(query: str, interaction: discord.Interaction) -> list:
         if 'https://open.spotify.com/' in query:
             lst = [SongGenerator(song, interaction) for song in SpotifyInfo.spotify_get(query)]
+        elif 'cdn.discordapp.com' in query:
+            lst = [SongGenerator(query, interaction)]
         else:
             lst = [SongGenerator(SpotifyInfo.spotify_get(query)[0], interaction)]
 
@@ -46,17 +48,25 @@ class SongGenerator:
         self.source: str | None           = None
         self.lyrics: str | None           = None
         self.is_good: bool                = True
+        self.from_file: bool              = False
 
         if isinstance(query, str):
             if 'www.youtube.com' in query:
                 # TODO: if song is YouTube link
                 self.is_good = False
                 return
+            if 'cdn.discordapp.com' in query:
+                self.from_file = True
+                self.source = query
+                self.name = query.split('/')[-1].split('.')[0].replace('_', ' ')
+                return
             else:
                 self.set_spotify_info(query)
-
         elif isinstance(query, SpotifySong):
             self.set_spotify_secondary(query)
+
+        t = Thread(target = self.set_source_color_lyrics)
+        t.start()
 
     def set_spotify_info(self, query: str) -> bool | None:
         try:
@@ -79,7 +89,7 @@ class SongGenerator:
         self.thumbnail_link = info.thumbnail_url
         self.spotify_link = info.url
 
-    def set_source_color_lyrics(self):
+    def set_source_color_lyrics(self, thread=None):
         # multithreading calculating color and extracting source info to save time
         source_thread = Thread(target = self.set_source, args = ())
         color_thread  = Thread(target = self.set_color,  args = ())
@@ -107,7 +117,7 @@ class SongGenerator:
         self.yt_id = yt_info.id
         self.yt_link = f'https://www.youtube.com/watch?v={self.yt_id}'
 
-        if self.source == 'source':
+        if self.source is None:
             self.is_good = False
 
     def set_color(self) -> None:
@@ -135,8 +145,11 @@ class SongGenerator:
             self.lyrics = 'No lyrics found for this song.'
 
     def to_msg_format(self) -> str:
-        authors = ''.join(author.name + ', ' for author in self.authors).strip(', ')
-        return f'{authors} - {self.name} ({self.timedelta_duration_to_str()})'
+        if self.from_file:
+            return self.name
+        else:
+            authors = ''.join(author.name + ', ' for author in self.authors).strip(', ')
+            return f'{authors} - {self.name} ({self.timedelta_duration_to_str()})'
 
     def timedelta_duration_to_str(self) -> str:
         """

@@ -16,7 +16,7 @@ base_64 = json_data['spotify']['base_64']
 
 @dataclass
 class Author:
-    def __init__(self, name, url):
+    def __init__(self, name: str = 'No author', url: str = 'https://example.com/'):
         self.name = name
         self.url = url
 

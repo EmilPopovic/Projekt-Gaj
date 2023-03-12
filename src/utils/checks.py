@@ -2,6 +2,7 @@
 This file is part of Shteff which is released under the GNU General Public License v3.0.
 See file LICENSE or go to <https://www.gnu.org/licenses/gpl-3.0.html> for full license details.
 """
+import discord
 
 from .exceptions import *
 
@@ -29,7 +30,8 @@ class PermissionsCheck:
     def get_member(interaction):
         user = interaction.user
         guild = interaction.guild
-        member = guild.get_member(user)
+        member = guild.get_member(user.id)
+        return member
 
     @classmethod
     def is_admin(cls, member):
@@ -47,5 +49,10 @@ class PermissionsCheck:
         return False
 
     @classmethod
-    def has_permissions(cls, member):
+    def member_has_permissions(cls, member):
         return cls.is_admin(member) or cls.is_dj(member)
+
+    @classmethod
+    def interaction_has_permissions(cls, interaction: discord.Interaction):
+        member = cls.get_member(interaction)
+        return cls.member_has_permissions(member)

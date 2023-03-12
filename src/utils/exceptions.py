@@ -3,9 +3,14 @@ from .colors import *
 # todo: explain when every exception is raised
 
 
+class SqlException(Exception):
+    def __init__(self, description: str):
+        print(f'{c_err()} Database query failed. Description: {description}')
+
+
 class FailedToConnectError(Exception):
     def __init__(self):
-        print(f'{c_time()} {c_err()} Failed to connect to voice channel.')
+        print(f'{c_err()} Failed to connect to voice channel.')
 
 
 class CommandExecutionError(Exception):

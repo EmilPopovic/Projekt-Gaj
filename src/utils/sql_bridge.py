@@ -3,6 +3,7 @@ import mysql.connector
 from mysql.connector import Error
 
 from .colors import *
+from .exceptions import SqlException
 
 with open('secrets.json', 'r') as f:
     data = json.load(f)
@@ -18,75 +19,72 @@ class Database:
     def __init__(self):
         """
         Establishes connection to MySQL server.
-        
+
         Parameters (taken from secrets.json):
             host_name (str): hostname for the MySQL server.
             user_name (str): username for the MySQL server.
             user_password (str): password for the MySQL server.
             db_name (str): name of the database to connect to.
             port_number (int): port number for the MySQL server.
-        
-        Returns:
-            connection: a connection object to the MySQL server.
         """
         self.connection = None
         try:
             self.connection = mysql.connector.connect(
-                host = host_name,
-                user = user_name,
-                passwd = user_password,
-                database = db_name,
-                port = port_number
+                host=host_name,
+                user=user_name,
+                passwd=user_password,
+                database=db_name,
+                port=port_number
             )
             print(f'{c_event("DATABASE CONNECTED")}')
         except Error as err:
-            print(f'{c_err()} {err}')
+            raise SqlException(str(err))
 
-    def execute_query(self, query):
+    def execute_query(self, query) -> None:
         """
         Executes specified MySQL query.
-        
+
         Parameters:
             query (str): the MySQL query to execute.
-        
+
         Returns:
             None
         """
-        cursor = self.connection.cursor()
         try:
+            cursor = self.connection.cursor()
             cursor.execute(query)
             self.connection.commit()
             print("Query successful")
         except Error as err:
-            print(f"Error: '{err}'")
+            raise SqlException(str(err))
 
     def read_query(self, query):
         """
         Executes specified MySQL SELECT query and returns the result.
-        
+
         Parameters:
             query (str): the MySQL SELECT query to execute.
-        
+
         Returns:
             result: a list of tuples containing the query result.
         """
-        cursor = self.connection.cursor()
-        result = None
         try:
+            cursor = self.connection.cursor()
             cursor.execute(query)
             result = cursor.fetchall()
         except Error as err:
-            print(f"Error: '{err}'")
-        return result
+            raise SqlException(str(err))
+        else:
+            return result
 
     # TODO: Error handling
     def get_channel_id(self, guild_id):
         """
         Retrieves the channel_id for a given guild_id from the 'guilds' table.
-        
+
         Parameters:
             guild_id (int): the guild_id to look up.
-        
+
         Returns:
             channel_id (int): the channel_id for the given guild_id.
         """
@@ -99,11 +97,11 @@ class Database:
     def update_channel_id(self, guild_id, channel_id):
         """
         Updates the channel_id for a given guild_id in the 'guilds' table.
-        
+
         Parameters:
             guild_id (int): the guild_id to update.
             channel_id (int): the new channel_id for the given guild_id.
-        
+
         Returns:
             None
         """
@@ -116,11 +114,11 @@ class Database:
     def add_channel_id(self, guild_id, channel_id):
         """
         Adds a new guild_id and channel_id pair to the 'guilds' table.
-        
+
         Parameters:
             guild_id (int): the guild_id to add.
             channel_id (int): the channel_id for the given guild_id.
-        
+
         Returns:
             None
         """
@@ -129,31 +127,25 @@ class Database:
 
         self.execute_query(query)
 
-
     def get_server_lists(self, guild_id):
         """
         Retrieves a list of playlists for a given server.
-
         Parameters:
             guild_id (int): The ID of the server to retrieve playlists for.
-
         Returns:
             list: A list of playlist names for the specified server.
         """
         query = f"""SELECT playlist_name FROM ServerPlaylists WHERE guild_id={guild_id};"""
-        
-        retval = self.execute_query(query)
-        lists = [elm[0] for elm in retval]
-        return query
 
+        retval = self.read_query(query)
+        lists = [elm[0] for elm in retval]
+        return lists
 
     def get_user_lists(self, user_id):
         """
         Retrieves a list of personal playlists for a given user.
-
         Parameters:
             user_id (int): The ID of the user to retrieve playlists for.
-
         Returns:
             list: A list of playlist names for the specified user.
         """
@@ -163,14 +155,11 @@ class Database:
         lists = [elm[0] for elm in retval]
         return lists
 
-
     def get_song_id(self, song):
         """
         Retrieves the ID of a song from the database. If the song does not exist in the database, it is added first.
-
         Parameters:
             song (Song): The Song object to retrieve the ID for.
-
         Returns:
             int: The ID of the specified song.
         """
@@ -188,16 +177,13 @@ class Database:
         # Return the ID of the song
         return song_id
 
-
     def add_to_server_playlist(self, song, guild_id, playlist_name):
         """
         Adds a song to a server playlist in the database.
-
         Parameters:
             song (Song): The Song object to add to the playlist.
             guild_id (int): The ID of the server the playlist belongs to.
             playlist_name (str): The name of the playlist to add the song to.
-
         Returns:
             None
         """
@@ -211,16 +197,13 @@ class Database:
         # Print a success message
         print("Song successfully added to playlist.")
 
-
     def add_to_personal_playlist(self, song, user_id, playlist_name):
         """
         Adds a song to a personal playlist in the database.
-
         Parameters:
             song (Song): The Song object to add to the playlist.
             user_id (int): The ID of the user the playlist belongs to.
             playlist_name (str): The name of the playlist to add the song to.
-
         Returns:
             None
         """
@@ -234,19 +217,16 @@ class Database:
         # Print a success message
         print("Song successfully added to playlist.")
 
-
     def create_server_playlist(self, guild_id, playlist_name):
         """
         Creates a new server playlist table in the database.
-
         Parameters:
             guild_id (int): The ID of the server the playlist belongs to.
             playlist_name (str): The name of the new playlist.
-
         Returns:
             None
         """
-    # Construct and execute the query to create the new playlist table
+        # Construct and execute the query to create the new playlist table
         query = f"""CREATE TABLE {playlist_name}_{guild_id}(
             local_id int NOT NULL auto_increment,
             actual_id int NOT NULL UNIQUE,
@@ -255,15 +235,12 @@ class Database:
             );"""
         self.execute_query(query)
 
-
     def create_personal_playlist(self, user_id, playlist_name):
         """
         Creates a new personal playlist table in the database.
-
         Parameters:
             user_id (int): The ID of the user the playlist belongs to.
             playlist_name (str): The name of the new playlist.
-
         Returns:
             None
         """
@@ -275,4 +252,3 @@ class Database:
             FOREIGN KEY (actual_id) REFERENCES Songs(song_id) ON DELETE CASCADE
             );"""
         self.execute_query(query)
-

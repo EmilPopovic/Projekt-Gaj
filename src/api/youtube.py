@@ -6,7 +6,6 @@ class YouTubeInfo:
     ydl_options = {
         'format': 'bestaudio',
         'audioquality': '0',
-        'audio_format': 'mp3',
         'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
         'restrictfilenames': True,
         'noplaylist': True,
@@ -22,27 +21,35 @@ class YouTubeInfo:
         'youtube_skip_dash_manifest': True,
         'playlist_end': 1,
         'max_downloads': 1,
-        'force_generic_extractor': True
+        'force_generic_extractor': True,
+        'use-extractors': 'youtube'
     }
 
     def __init__(self, query: str):
         self.source, self.title, self.id = self.search_yt(query)
 
     @classmethod
-    def search_yt(cls, query: str) -> dict:
+    def search_yt(cls, query: str) -> tuple[str, str, str]:
         with yt_dlp.YoutubeDL(cls.ydl_options) as ydl:
-            try:
-                info = ydl.extract_info(f'ytsearch:{query}', download = False)['entries'][0]
+            source = None
+            title = None
+            yt_id = None
 
-                source = info['formats'][0]['url']
-                title  = info['title']
-                yt_id     = info['id']
+            try:
+                video = ydl.extract_info(f'ytsearch:{query}', download = False)['entries'][0]
+                formats = video['formats']
+                for f in formats:
+                    url = f['url']
+                    if 'googlevideo.com' in url:
+                        break
+                else:
+                    url = None
+
+                source = url
+                title  = video['title']
+                yt_id  = video['id']
 
             except:
                 raise YTDLError(query)
 
-        return {
-            'source': source,
-            'title': title,
-            'id': yt_id
-        }
+        return source, title, yt_id

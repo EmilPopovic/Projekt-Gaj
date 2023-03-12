@@ -16,7 +16,7 @@ class CommandButtons(discord.ui.View):
     async def shuffle_btn_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
         success = await self.command_handler.shuffle(interaction, send_response=False)
         if success:
-            guild_bot = self.bot.get_bot(interaction)
+            guild_bot = self.bot.get_bot_from_interaction(interaction)
             button.style = BtnStyle.green if guild_bot.is_shuffled else BtnStyle.grey
             await interaction.response.edit_message(view=self)
 
@@ -28,7 +28,7 @@ class CommandButtons(discord.ui.View):
     async def pause_btn_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
         success = await self.command_handler.pause(interaction, send_response=False)
         if success:
-            guild_bot = self.bot.get_bot(interaction)
+            guild_bot = self.bot.get_bot_from_interaction(interaction)
             button.style = BtnStyle.green if guild_bot.is_paused else BtnStyle.grey
             button.label = '▶' if guild_bot.is_paused else '▉'
             await interaction.response.edit_message(view = self)
@@ -41,7 +41,7 @@ class CommandButtons(discord.ui.View):
     async def loop_btn_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
         success = await self.command_handler.loop(interaction, send_response=False)
         if not success: return
-        guild_bot = self.bot.get_bot(interaction)
+        guild_bot = self.bot.get_bot_from_interaction(interaction)
         if guild_bot.is_looped:
             button.style = BtnStyle.green
         elif guild_bot.is_looped_single:
@@ -64,7 +64,7 @@ class CommandButtons(discord.ui.View):
     async def lyrics_btn_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
         success = await self.command_handler.lyrics(interaction, send_response=False)
         if not success: return
-        guild_bot = self.bot.get_bot(interaction)
+        guild_bot = self.bot.get_bot_from_interaction(interaction)
         button.style = BtnStyle.green if guild_bot.show_lyrics else BtnStyle.grey
         await interaction.response.edit_message(view=self)
 
@@ -72,7 +72,7 @@ class CommandButtons(discord.ui.View):
     async def queue_btn_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
         success = await self.command_handler.queue(interaction, send_response=False)
         if not success: return
-        guild_bot = self.bot.get_bot(interaction)
+        guild_bot = self.bot.get_bot_from_interaction(interaction)
         button.style = BtnStyle.green if guild_bot.short_queue else BtnStyle.grey
         await interaction.response.edit_message(view = self)
 
@@ -80,6 +80,6 @@ class CommandButtons(discord.ui.View):
     async def history_btn_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
         success = await self.command_handler.history(interaction, send_response=False)
         if not success: return
-        guild_bot = self.bot.get_bot(interaction)
+        guild_bot = self.bot.get_bot_from_interaction(interaction)
         button.style = BtnStyle.green if guild_bot.show_history else BtnStyle.grey
         await interaction.response.edit_message(view = self)

@@ -83,7 +83,6 @@ class GuildBot(Player):
         # todo: if that is made, make list showing buttons a single button that loops through possible display modes
         # todo: adjust docstring when behaviour changed
         # todo: adjust docstring after lyrics moved to separate message
-        # TODO: show playing progress bar
         content = ''
 
         if self.show_history:
@@ -138,38 +137,47 @@ class GuildBot(Player):
                 color = color
             )
 
-            embed.add_field(
-                name = 'Currently playing:',
-                value = current.name,
-                inline = False
-            )
+            if current.from_file:
+                embed.add_field(
+                    name = 'Currently playing:',
+                    value = current.name,
+                    inline = False
+                )
 
-            embed.add_field(
-                name = 'Duration:',
-                value = f'{current.timedelta_duration_to_str()}',
-                inline = False
-            )
+                embed.set_footer(text = 'Cannot extract additional info for songs added from a file.')
 
-            embed.add_field(
-                name = 'Track links:',
-                value = f'[Spotify]({current.spotify_link})\n[YouTube]({current.yt_link})',
-                inline = True
-            )
+            else:
+                embed.add_field(
+                    name = 'Currently playing:',
+                    value = current.name,
+                    inline = False
+                )
 
-            embed.add_field(
-                name = 'Author links:',
-                value = ''.join(author.print_with_url_format(new_line = True) for author in current.authors),
-                inline = True
-            )
+                embed.add_field(
+                    name = 'Duration:',
+                    value = f'{current.timedelta_duration_to_str()}',
+                    inline = False
+                )
 
-            if current.thumbnail_link is not None:
-                embed.set_thumbnail(url = current.thumbnail_link)
+                embed.add_field(
+                    name = 'Track links:',
+                    value = f'[Spotify]({current.spotify_link})\n[YouTube]({current.yt_link})',
+                    inline = True
+                )
 
-            embed.set_footer(text = 'We do not guarantee the accuracy of the data provided.')
+                embed.add_field(
+                    name = 'Author links:',
+                    value = ''.join(author.print_with_url_format(new_line = True) for author in current.authors),
+                    inline = True
+                )
+
+                if current.thumbnail_link is not None:
+                    embed.set_thumbnail(url = current.thumbnail_link)
+
+                embed.set_footer(text = 'We do not guarantee the accuracy of the data provided.')
 
             # set lyrics message
             if self.show_lyrics:
-                # todo: lyrics button returns to grey when queue cleared but works as expected
                 lyrics_msg_content = f'**Lyrics:\n\n**{current.lyrics}\n\n'
                 if self.lyrics_message is None:
                     if len(lyrics_msg_content) > 1900:
@@ -199,12 +207,10 @@ class GuildBot(Player):
             await self.create_live_msg()
 
     async def toggle_queue(self) -> None:
-        # todo: function call needs to be added to command queue
         self.short_queue = not self.short_queue
         await self.guild_bot.update_msg()
 
     async def toggle_history(self) -> None:
-        # todo: function call needs to be added to command queue
         if self.show_history:
             self.show_history = False
             if self.was_long_queue:
@@ -219,7 +225,6 @@ class GuildBot(Player):
         await self.guild_bot.update_msg()
 
     async def toggle_lyrics(self):
-        # todo: function call needs to be added to command queue
         if self.show_lyrics:
             self.show_lyrics = False
             await self.delete_lyrics_message()
