@@ -14,17 +14,17 @@ class SongGenerator:
     last_uid = 0
 
     @staticmethod
-    def get_songs(query: str, interaction: discord.Interaction) -> list:
+    def get_songs(query: str, interaction: discord.Interaction, set_all: bool = False) -> list:
         if 'https://open.spotify.com/' in query:
-            lst = [SongGenerator(song, interaction) for song in SpotifyInfo.spotify_get(query)]
+            lst = [SongGenerator(song, interaction, set_all) for song in SpotifyInfo.spotify_get(query)]
         elif 'cdn.discordapp.com' in query:
-            lst = [SongGenerator(query, interaction)]
+            lst = [SongGenerator(query, interaction, set_all)]
         else:
             lst = [SongGenerator(SpotifyInfo.spotify_get(query)[0], interaction)]
 
         return [song for song in lst if song.is_good]
 
-    def __init__(self, query, interaction: discord.Interaction):
+    def __init__(self, query, interaction: discord.Interaction, set_all: bool = True):
         self.query = query
         self.interaction = interaction
         self.error = None
@@ -36,19 +36,19 @@ class SongGenerator:
         SongGenerator.last_uid += 1
 
         # initialize attributes
-        self.name: str | None             = None
+        self.name: str | None = None
         self.authors: list[Author] | None = None
-        self.author: Author | None        = None
-        self.duration: timedelta | None   = None
-        self.thumbnail_link: str | None   = None
-        self.spotify_link: str | None     = None
-        self.yt_id: str | None            = None
-        self.yt_link: str | None          = None
-        self.color: tuple | None          = None
-        self.source: str | None           = None
-        self.lyrics: str | None           = None
-        self.is_good: bool                = True
-        self.from_file: bool              = False
+        self.author: Author | None = None
+        self.duration: timedelta | None = None
+        self.thumbnail_link: str | None = None
+        self.spotify_link: str | None = None
+        self.yt_id: str | None = None
+        self.yt_link: str | None = None
+        self.color: tuple | None = None
+        self.source: str | None = None
+        self.lyrics: str | None = None
+        self.is_good: bool = True
+        self.from_file: bool = False
 
         if isinstance(query, str):
             if 'www.youtube.com' in query:
@@ -65,8 +65,11 @@ class SongGenerator:
         elif isinstance(query, SpotifySong):
             self.set_spotify_secondary(query)
 
-        t = Thread(target = self.set_source_color_lyrics)
+        t = Thread(target=self.set_source_color_lyrics)
         t.start()
+
+        if set_all:
+            t.join()
 
     def set_spotify_info(self, query: str) -> bool | None:
         try:
@@ -91,9 +94,9 @@ class SongGenerator:
 
     def set_source_color_lyrics(self, thread=None):
         # multithreading calculating color and extracting source info to save time
-        source_thread = Thread(target = self.set_source, args = ())
-        color_thread  = Thread(target = self.set_color,  args = ())
-        lyrics_thread = Thread(target = self.set_lyrics, args = ())
+        source_thread = Thread(target=self.set_source, args=())
+        color_thread = Thread(target=self.set_color, args=())
+        lyrics_thread = Thread(target=self.set_lyrics, args=())
 
         source_thread.start()
         color_thread.start()
@@ -132,7 +135,7 @@ class SongGenerator:
         # convert image to ColorThief object
         color_thief = ColorThief(img)
         # extract color palette from image
-        palette = color_thief.get_palette(color_count = 5)
+        palette = color_thief.get_palette(color_count=5)
         self.color = palette[0]
 
     def set_lyrics(self) -> None:
