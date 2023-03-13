@@ -1,12 +1,6 @@
-import json
-
 from lyricsgenius import Genius
 
-
-with open('secrets.json', 'r') as f:
-    data = json.load(f)
-
-api_key = data['genius']['genius_client_access_token']
+from settings import api_key
 
 
 class GeniusInfo:

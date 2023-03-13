@@ -8,6 +8,11 @@ class SqlException(Exception):
         print(f'{c_err()} Database query failed. Description: {description}')
 
 
+class ForbiddenQueryError(Exception):
+    def __init__(self, query: str):
+        print(f'{c_err()} Database received forbidden query: {query}')
+
+
 class FailedToConnectError(Exception):
     def __init__(self):
         print(f'{c_err()} Failed to connect to voice channel.')

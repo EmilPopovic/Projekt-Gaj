@@ -20,9 +20,9 @@ class GuildBot(Player):
 
     default_color = 0xf1c40f
     default_embed = discord.Embed(
-        title = 'Welcome to Shteff!',
-        description = 'Use /play to add more songs to queue.',
-        color = default_color
+        title='Welcome to Shteff!',
+        description='Use /play to add more songs to queue.',
+        color=default_color
     )
 
     async def _async_init_(self, guild: discord.guild.Guild):
@@ -30,33 +30,33 @@ class GuildBot(Player):
         self.guild: discord.guild.Guild = guild
 
         self.command_message: discord.Message | None = None
-        self.lyrics_message:  discord.Message | None = None
+        self.lyrics_message: discord.Message | None = None
 
-        self.show_lyrics  = False
-        self.short_queue  = False
+        self.show_lyrics = False
+        self.short_queue = False
         self.show_history = False
 
-        self.command_channel_id: int              = await self.get_id(self.guild)
+        self.command_channel_id: int = await self.get_id(self.guild)
         self.command_channel: discord.TextChannel = self.bot.get_channel(self.command_channel_id)
 
         await self.create_live_msg()
 
     __init__ = _async_init_
 
-        # todo: make queue display toggling a single button
-        # todo: should behave like loop does
+    # todo: make queue display toggling a single button
+    # todo: should behave like loop does
 
     async def create_live_msg(self):
         # clear command channel
-        await self.command_channel.purge(limit = 10)
+        await self.command_channel.purge(limit=10)
         # start a new live message
-        self.command_message = await self.command_channel.send(embed = self.default_embed, view = Buttons())
+        self.command_message = await self.command_channel.send(embed=self.default_embed, view=Buttons())
         # update message
         await self.update_msg()
 
     def reset_flags(self) -> None:
-        self.show_lyrics  = False
-        self.short_queue  = False
+        self.show_lyrics = False
+        self.short_queue = False
         self.show_history = False
 
     async def update_msg(self) -> None:
@@ -132,49 +132,49 @@ class GuildBot(Player):
                 color = self.default_color
 
             embed = discord.Embed(
-                title = 'Welcome to Shteff!',
-                description = 'Use /play to add more songs to queue.',
-                color = color
+                title='Welcome to Shteff!',
+                description='Use /play to add more songs to queue.',
+                color=color
             )
 
             if current.from_file:
                 embed.add_field(
-                    name = 'Currently playing:',
-                    value = current.name,
-                    inline = False
+                    name='Currently playing:',
+                    value=current.name,
+                    inline=False
                 )
 
-                embed.set_footer(text = 'Cannot extract additional info for songs added from a file.')
+                embed.set_footer(text='Cannot extract additional info for songs added from a file.')
 
             else:
                 embed.add_field(
-                    name = 'Currently playing:',
-                    value = current.name,
-                    inline = False
+                    name='Currently playing:',
+                    value=current.name,
+                    inline=False
                 )
 
                 embed.add_field(
-                    name = 'Duration:',
-                    value = f'{current.timedelta_duration_to_str()}',
-                    inline = False
+                    name='Duration:',
+                    value=f'{current.timedelta_duration_to_str()}',
+                    inline=False
                 )
 
                 embed.add_field(
-                    name = 'Track links:',
-                    value = f'[Spotify]({current.spotify_link})\n[YouTube]({current.yt_link})',
-                    inline = True
+                    name='Track links:',
+                    value=f'[Spotify]({current.spotify_link})\n[YouTube]({current.yt_link})',
+                    inline=True
                 )
 
                 embed.add_field(
-                    name = 'Author links:',
-                    value = ''.join(author.print_with_url_format(new_line = True) for author in current.authors),
-                    inline = True
+                    name='Author links:',
+                    value=''.join(author.print_with_url_format(new_line=True) for author in current.authors),
+                    inline=True
                 )
 
                 if current.thumbnail_link is not None:
-                    embed.set_thumbnail(url = current.thumbnail_link)
+                    embed.set_thumbnail(url=current.thumbnail_link)
 
-                embed.set_footer(text = 'We do not guarantee the accuracy of the data provided.')
+                embed.set_footer(text='We do not guarantee the accuracy of the data provided.')
 
             # set lyrics message
             if self.show_lyrics:
@@ -185,22 +185,22 @@ class GuildBot(Player):
                         lyrics_msg_content += '\n*Only the first 2000 characters of the lyrics can be displayed.*\n'
                     lyrics_msg_content += '*Lyrics provided by Genius.*'
 
-                    self.lyrics_message = await self.command_channel.send(content = lyrics_msg_content)
+                    self.lyrics_message = await self.command_channel.send(content=lyrics_msg_content)
                 else:
-                    await self.lyrics_message.edit(content = lyrics_msg_content)
+                    await self.lyrics_message.edit(content=lyrics_msg_content)
 
         else:
             # set idle embed
             embed = self.default_embed
-            embed.set_footer(text = '')
+            embed.set_footer(text='')
             await self.delete_lyrics_message()
 
         try:
             # edit message with generated elements
             await self.command_message.edit(
-                content = content,
-                embed = embed,
-                view = Buttons()
+                content=content,
+                embed=embed,
+                view=Buttons()
             )
         except discord.errors.NotFound:
             # create a new message if last one was deleted

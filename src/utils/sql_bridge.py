@@ -1,18 +1,9 @@
-import json
 import mysql.connector
 from mysql.connector import Error
 
 from .colors import *
 from .exceptions import SqlException
-
-with open('secrets.json', 'r') as f:
-    data = json.load(f)
-
-host_name = data['database']['host_name']
-user_name = data['database']['user_name']
-user_password = data['database']['user_password']
-db_name = data['database']['db_name']
-port_number = data['database']['port_number']
+from settings import host_name, user_name, user_password, db_name, port_number
 
 
 class Database:
@@ -54,7 +45,6 @@ class Database:
             cursor = self.connection.cursor()
             cursor.execute(query)
             self.connection.commit()
-            print("Query successful")
         except Error as err:
             raise SqlException(str(err))
 
@@ -164,18 +154,18 @@ class Database:
             int: The ID of the specified song.
         """
         # Check if the song already exists in the database
-        query1 = f"""SELECT song_id FROM Songs WHERE song_name={song.name}, song_author={song.author}"""
+        query1 = f"""SELECT song_id FROM Songs WHERE song_name='{song.name}' AND author_name='{song.author.name}'"""
         song_id = self.read_query(query1)
 
         # If the song does not exist, add it to the database
         if not song_id:
-            query2 = f"""INSERT INTO Songs(song_name, song_author, song_link) VALUES ({song.name}, {song.author}, {song.yt_link});"""
+            query2 = f"""INSERT INTO Songs(song_name, author_name, song_link) VALUES ('{song.name}', '{song.author.name}', '{song.source}');"""
             self.execute_query(query2)
-            query3 = f"""SELECT song_id FROM Songs WHERE song_name={song.name}, song_author={song.author}"""
+            query3 = f"""SELECT song_id FROM Songs WHERE song_name='{song.name}' AND author_name='{song.author.name}'"""
             song_id = self.read_query(query3)
 
         # Return the ID of the song
-        return song_id
+        return song_id[0][0]
 
     def add_to_server_playlist(self, song, guild_id, playlist_name):
         """
@@ -233,7 +223,7 @@ class Database:
             PRIMARY KEY(local_id),
             FOREIGN KEY (actual_id) REFERENCES Songs(song_id) ON DELETE CASCADE
             );"""
-        query2 = f"""INSERT INTO ServerPlaylists (playlist_name, guild_id) VALUES ({playlist_name}, {guild_id});"""
+        query2 = f"""INSERT INTO ServerPlaylists (playlist_name, guild_id) VALUES ('{playlist_name}', {guild_id});"""
         self.execute_query(query)
         self.execute_query(query2)
 
@@ -253,7 +243,37 @@ class Database:
             PRIMARY KEY(local_id),
             FOREIGN KEY (actual_id) REFERENCES Songs(song_id) ON DELETE CASCADE
             );"""
-        
-        query2 = f"""INSERT INTO PersonalPlaylists (playlist_name, guild_id) VALUES ({playlist_name}, {user_id});"""
         self.execute_query(query)
+
+    def delete_server_playlist(self, guild_id, playlist_name):
+        query1 = f"""DROP TABLE `{playlist_name}_{guild_id}`;"""
+        query2 = f"""DELETE FROM ServerPlaylists WHERE guild_id={guild_id} AND playlist_name='{playlist_name}';"""
+
+        self.execute_query(query1)
         self.execute_query(query2)
+
+    def remove_from_server_playlist(self, guild_id, playlist_name, song):
+        song_id = self.get_song_id(song)
+        query1 = f"""DELETE FROM `{playlist_name}_{guild_id}` WHERE actual_id={song_id};"""
+
+        self.execute_query(query1)
+
+    def get_songs_from_list(self, id, playlist_name):
+        query = f"""SELECT * FROM `{playlist_name}_{id}`;"""
+        song_pairs = self.read_query(query)
+
+        ret_list = []
+        for song in song_pairs:
+            query2 = f"""SELECT song_id, song_name, author_name, song_link FROM Songs WHERE song_id={song[1]};"""
+            retval = self.read_query(query2)[0]
+            ret_list.append(
+                {
+                    'song_id': song[0],
+                    'global_id': retval[0],
+                    'song_name': retval[1],
+                    'author_name': retval[2],
+                    'source': retval[3]
+                }
+            )
+
+        return ret_list

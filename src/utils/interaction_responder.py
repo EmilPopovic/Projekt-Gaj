@@ -3,12 +3,14 @@ import discord
 
 class InteractionResponder:
     @staticmethod
-    async def send(text: str,
-                   interaction: discord.Interaction,
-                   followup: bool = False,
-                   fail: bool = False,
-                   event: bool = False,
-                   ephemeral: bool = True):
+    async def send(
+            text: str,
+            interaction: discord.Interaction,
+            followup: bool = False,
+            fail: bool = False,
+            event: bool = False,
+            ephemeral: bool = True
+    ) -> None:
         if fail:
             title = 'Fail'
             color = discord.Color.from_rgb(242, 63, 67)
@@ -28,3 +30,22 @@ class InteractionResponder:
             await interaction.followup.send(content='', embed=embed, ephemeral=ephemeral)
         else:
             await interaction.response.send_message(content='', embed=embed, ephemeral=ephemeral)
+
+    @staticmethod
+    async def show_list(
+        songs: list[dict],
+        playlist_name: str,
+        interaction: discord.Interaction
+    ) -> None:
+        song_names = [song['song_name'] for song in songs]
+        msg = ''
+        for song_name in song_names:
+            msg += f'{song_name}\n'
+
+        embed = discord.Embed(
+            title=playlist_name,
+            description=msg,
+            color=0xf1c40f
+        )
+
+        await interaction.response.send_message(content='', embed=embed, ephemeral=True)

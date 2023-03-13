@@ -54,25 +54,25 @@ class HelpCog:
     @classmethod
     async def send_message(cls, interaction: discord.Interaction):
         embed = discord.Embed(
-            title = 'The F***ing Manual',
-            description = 'Read it.',
-            color = 0xf1c40f
+            title='The F***ing Manual',
+            description='Read it.',
+            color=0xf1c40f
         )
         embed.add_field(
-            name = 'Slash commands:',
-            value = cls.get_slash_content(),
-            inline = False
+            name='Slash commands:',
+            value=cls.get_slash_content(),
+            inline=False
         )
         embed.add_field(
-            name = 'Button commands:',
-            value = cls.get_buttons_content(),
-            inline = False
+            name='Button commands:',
+            value=cls.get_buttons_content(),
+            inline=False
         )
         embed.add_field(
-            name = 'About us',
-            value = cls.description,
-            inline = False
+            name='About us',
+            value=cls.description,
+            inline=False
         )
-        embed.set_footer(text = 'We\'ve done our photosynthesis, have you?')
+        embed.set_footer(text='We\'ve done our photosynthesis, have you?')
 
         await interaction.response.send_message(content='', embed=embed, ephemeral=True)

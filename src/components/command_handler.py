@@ -15,13 +15,13 @@ class CommandHandler:
     async def handle_interaction_error(interaction, exception):
         match type(exception).__name__:
             case 'UserNotInVCError':
-                await Responder.send('Connect to a voice channel to use this command.', interaction, fail = True)
+                await Responder.send('Connect to a voice channel to use this command.', interaction, fail=True)
             case 'BotNotInVCError':
-                await Responder.send('Shteff must be in a voice channel to use this command.', interaction, fail = True)
+                await Responder.send('Shteff must be in a voice channel to use this command.', interaction, fail=True)
             case 'DifferentChannelsError':
-                await Responder.send('You and Shteff are in different voice channels.', interaction, fail = True)
+                await Responder.send('You and Shteff are in different voice channels.', interaction, fail=True)
             case _:
-                await Responder.send('An undocumented error occurred.', interaction, fail = True)
+                await Responder.send('An undocumented error occurred.', interaction, fail=True)
 
     # todo: ignore command if bot not in vc
     async def __execute(self,
@@ -48,14 +48,15 @@ class CommandHandler:
             else:
                 asyncio.create_task(func(*args, **kwargs))
         except CommandExecutionError as error:
-            await Responder.send(error.message, interaction, fail = True)
+            await Responder.send(error.message, interaction, fail=True)
             return False
         except Exception as _:
             print(_)
-            await Responder.send('An undocumented error occurred.', interaction, fail = True)
+            await Responder.send('An undocumented error occurred.', interaction, fail=True)
             return False
         else:
-            if send_response: await Responder.send(success_msg, interaction)
+            if send_response:
+                await Responder.send(success_msg, interaction)
             return True
 
     async def play(self, interaction: discord.Interaction, song: str, place: int = None, send_response=True):
@@ -67,22 +68,22 @@ class CommandHandler:
 
         # if user is not in a voice channel
         if user_voice_state is None:
-            await Responder.send('Connect to a voice channel to play songs.', interaction, fail = True)
+            await Responder.send('Connect to a voice channel to play songs.', interaction, fail=True)
             return
         # if user is in a different voice channel than the bot
         elif bot_vc_id and user_voice_state.channel.id != bot_vc_id:
-            await Responder.send('You are not in a voice channel with Shteff', interaction, fail = True)
+            await Responder.send('You are not in a voice channel with Shteff', interaction, fail=True)
             return
         # if user is in a voice channel with the bot
         try:
-            await Responder.send('Trying to add song(s)', interaction, event = True)
-            task = asyncio.create_task(guild_bot.add_to_queue(query = song,
-                                                              voice_channel = user_voice_state.channel,
-                                                              number = place,
-                                                              interaction = interaction))
+            await Responder.send('Trying to add song(s)', interaction, event=True)
+            task = asyncio.create_task(guild_bot.add_to_queue(query=song,
+                                                              voice_channel=user_voice_state.channel,
+                                                              number=place,
+                                                              interaction=interaction))
             self.tasks.append(task)
         except CommandExecutionError as error:
-            await Responder.send(error.message, interaction, followup = True, fail = True)
+            await Responder.send(error.message, interaction, followup=True, fail=True)
         # except Exception as _:
         #     await Responder.send('An undocumented error occurred.', interaction, followup = True, fail = True)
 
@@ -97,9 +98,9 @@ class CommandHandler:
 
         supported_extensions = ['mp4', 'mp3', 'flac', 'm4a', 'wav', 'wma', 'aac']
         if extension not in supported_extensions:
-            await Responder.send(f'Filetype .{extension} not supported', interaction, fail = True)
+            await Responder.send(f'Filetype .{extension} not supported', interaction, fail=True)
 
-        await self.play(interaction, url, place = place, send_response = send_response)
+        await self.play(interaction, url, place=place, send_response=send_response)
 
     async def swap(self, interaction: discord.Interaction, song1: int, song2: int, send_response=True):
         guild_bot = self.bot.guild_bots[interaction.guild.id]

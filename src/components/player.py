@@ -311,6 +311,7 @@ class Player(commands.Cog):
         """
         await self.work_queue.put(self.get_coro_id())
         async with self.lock:
+            # todo: use transformers for this check
             queue_len = len(self.queue[self.p_index + 1:])
             if i == 0 and j == 0:
                 raise CommandExecutionError('Arguments must be greater than 0.')
@@ -439,77 +440,23 @@ class Player(commands.Cog):
         await self.__play_next()
 
     def __get_next(self):
+        next_index = self.p_index
         if self.queue[self.p_index + 1:]:
-            # todo: this condition is wrong
             if not self.is_looped_single and self.is_playing or self.p_index == -1:
-                self.p_index += 1
+                next_index += 1
             if self.is_looped and self.p_index == len(self.queue):
-                self.p_index = self.loop_start_index
+                next_index = self.loop_start_index
 
-            next_song = self.queue[self.p_index]
-            next_song.set_source_color_lyrics()
-            return next_song
+            next_song: SongGenerator = self.queue[next_index]
+            return next_song, next_index
         else:
-            return None
+            return None, None
 
     async def __play_next(self):
-        next_source = self.__get_next()
-        if next_source is not None:
-            asyncio.create_task(self.__play_audio(next_source))
+        next_song, next_index = self.__get_next()
+        self.p_index = next_index
+        if next_song is not None:
+            asyncio.create_task(self.__play_audio(next_song))
         else:
             self.is_playing = False
             asyncio.create_task(self.guild_bot.update_msg())
-
-    async def play_next(self) -> None:
-        """
-        Plays the next song in the queue. If the end of the queue is reached, the player will
-        either loop the queue or end playback depending on the current looping settings.
-        This method also updates the message displaying the current queue.
-        If a song has not been set with a source and color yet, this method will set them before
-        playing. If a song's source is invalid, it will be removed from the queue and the next
-        song will be played.
-        """
-        if self.queue[self.p_index + 1:]:
-            if not self.is_looped_single and self.is_playing or self.p_index == -1:
-                self.p_index += 1
-
-            if self.is_looped and self.p_index == len(self.queue):
-                self.p_index = self.loop_start_index
-
-            current: SongGenerator = self.queue[self.p_index]
-            current.set_source_color_lyrics()
-            source: str = current.source
-            interaction: discord.Interaction = current.interaction
-
-            try:
-                await self.__join()
-            except FailedToConnectError:
-                print(f'{c_err()} failed to connect to vc in guild {c_channel(self.guild.id)}')
-                await Responder.send('Failed to join voice channel.', interaction, followup=True, fail=True)
-                return
-
-            if not current.is_good:
-                print(f'{c_err()} invalid song object: {current}')
-                await Responder.send(f'Cannot find "{current.name}".', interaction, followup=True, fail=True)
-                self.queue.pop(self.p_index)
-                await self.skip()
-                return
-
-            self.is_playing = True
-            await self.guild_bot.update_msg()
-
-            # start playing
-            # Alan Turing himself poured his essence into this piece of code
-            # for the love of all that is good don't touch the lines below
-            loop = asyncio.get_event_loop()
-            self.voice_client.play(
-                discord.FFmpegPCMAudio(source, **self.ffmpeg_options),
-                after=lambda _: loop.create_task(self.__play_next())
-            )
-
-        else:
-            # if we finished playing the last song in queue
-            # todo: i don't know what this is doing but it doesn't do what it should
-            self.p_index += 1
-            self.is_playing = False
-            await self.guild_bot.update_msg()

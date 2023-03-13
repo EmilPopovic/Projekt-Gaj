@@ -1,17 +1,9 @@
-import json
-
 from requests import get, post
 from datetime import timedelta
 from dataclasses import dataclass
 
 from utils import SpotifyExtractError
-
-
-with open('secrets.json', 'r') as f:
-    json_data = json.load(f)
-
-refresh_token = json_data['spotify']['refresh_token']
-base_64 = json_data['spotify']['base_64']
+from settings import refresh_token, base_64
 
 
 @dataclass
@@ -78,17 +70,17 @@ class SpotifyInfo:
 
         try:
             song = SpotifySong(
-                name = data['name'],
-                url = url,
-                authors = [
+                name=data['name'],
+                url=url,
+                authors=[
                     Author(
-                        name = author['name'],
-                        url = author['external_urls']['spotify']
+                        name=author['name'],
+                        url=author['external_urls']['spotify']
                     )
                     for author in data['artists']
                 ],
-                thumbnail_url = data['album']['images'][-1]['url'],
-                duration = timedelta(milliseconds = data['duration_ms'])
+                thumbnail_url=data['album']['images'][-1]['url'],
+                duration=timedelta(milliseconds=data['duration_ms'])
             )
             return song
         except KeyError:
@@ -106,17 +98,17 @@ class SpotifyInfo:
             item = data['tracks']['items'][0]
 
             return SpotifySong(
-                name = item['name'],
-                url = item['external_urls']['spotify'],
-                authors = [
+                name=item['name'],
+                url=item['external_urls']['spotify'],
+                authors=[
                     Author(
-                        name = author['name'],
-                        url = author['external_urls']['spotify']
+                        name=author['name'],
+                        url=author['external_urls']['spotify']
                     )
                     for author in item['artists']
                 ],
-                thumbnail_url = item['album']['images'][0]['url'],
-                duration = timedelta(milliseconds = item['duration_ms'])
+                thumbnail_url=item['album']['images'][0]['url'],
+                duration=timedelta(milliseconds=item['duration_ms'])
             )
         except KeyError:
             raise SpotifyExtractError(data)
@@ -133,17 +125,17 @@ class SpotifyInfo:
             # todo: get `thumbnail_url`
             return [
                 SpotifySong(
-                    name = item['name'],
-                    url = item['external_urls']['spotify'],
-                    authors = [
+                    name=item['name'],
+                    url=item['external_urls']['spotify'],
+                    authors=[
                         Author(
-                            name = author['name'],
-                            url = author['external_urls']['spotify']
+                            name=author['name'],
+                            url=author['external_urls']['spotify']
                         )
                         for author in item['artists']
                     ],
-                    thumbnail_url = None,
-                    duration = timedelta(milliseconds = item['duration_ms'])
+                    thumbnail_url=None,
+                    duration=timedelta(milliseconds=item['duration_ms'])
                 )
                 for item in data['items']
             ]
@@ -161,17 +153,17 @@ class SpotifyInfo:
         try:
             return [
                 SpotifySong(
-                    name = item['track']['name'],
-                    url = item['track']['external_urls']['spotify'],
-                    authors = [
+                    name=item['track']['name'],
+                    url=item['track']['external_urls']['spotify'],
+                    authors=[
                         Author(
-                            name = author['name'],
-                            url = author['external_urls']['spotify']
+                            name=author['name'],
+                            url=author['external_urls']['spotify']
                         )
                         for author in item['track']['artists']
                     ],
-                    thumbnail_url = item['track']['album']['images'][0]['url'],
-                    duration = timedelta(milliseconds = item['track']['duration_ms'])
+                    thumbnail_url=item['track']['album']['images'][0]['url'],
+                    duration=timedelta(milliseconds=item['track']['duration_ms'])
                 )
                 for item in data['items']
             ]
@@ -201,17 +193,17 @@ class SpotifyInfo:
         try:
             return [
                 SpotifySong(
-                    name = item['name'],
-                    url = item['external_urls']['spotify'],
-                    authors = [
+                    name=item['name'],
+                    url=item['external_urls']['spotify'],
+                    authors=[
                         Author(
-                            name = author['name'],
-                            url = author['external_urls']['spotify']
+                            name=author['name'],
+                            url=author['external_urls']['spotify']
                         )
                         for author in item['artists']
                     ],
-                    thumbnail_url = item['album']['images'][0]['url'],
-                    duration = timedelta(milliseconds = item['duration_ms'])
+                    thumbnail_url=item['album']['images'][0]['url'],
+                    duration=timedelta(milliseconds=item['duration_ms'])
                 )
                 for item in data['tracks']
             ]
@@ -222,7 +214,7 @@ class SpotifyInfo:
     def __get_response(cls, query: str) -> dict:
         response = get(
             query,
-            headers = {
+            headers={
                 'Content-Type': 'application/json',
                 'Authorization': f'Bearer {cls.spotify_token}'
             }
@@ -233,11 +225,11 @@ class SpotifyInfo:
     def __call_refresh(cls) -> None:
         response = post(
             'https://accounts.spotify.com/api/token',
-            data = {
+            data={
                 'grant_type': 'refresh_token',
                 'refresh_token': refresh_token
             },
-            headers = {
+            headers={
                 'Authorization': 'Basic ' + base_64
             }
         )
