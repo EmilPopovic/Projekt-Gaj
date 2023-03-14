@@ -1,9 +1,20 @@
+import dataclasses
 import mysql.connector
 from mysql.connector import Error
 
 from .colors import *
 from .exceptions import SqlException
 from settings import host_name, user_name, user_password, db_name, port_number
+
+
+@dataclasses.dataclass
+class SqlSong:
+    def __init__(self, song_id: int, global_id: int, song_name: str, author_name: str, source: str):
+        self.song_id = song_id
+        self.global_id = global_id
+        self.song_name = song_name
+        self.author_name = author_name
+        self.source = source
 
 
 class Database:
@@ -187,7 +198,7 @@ class Database:
         # Print a success message
         print("Song successfully added to playlist.")
 
-    def add_to_personal_playlist(self, song, user_id, playlist_name):
+    def add_to_user_playlist(self, song, user_id, playlist_name):
         """
         Adds a song to a personal playlist in the database.
         Parameters:
@@ -227,7 +238,7 @@ class Database:
         self.execute_query(query)
         self.execute_query(query2)
 
-    def create_personal_playlist(self, user_id, playlist_name):
+    def create_user_playlist(self, user_id, playlist_name):
         """
         Creates a new personal playlist table in the database.
         Parameters:
@@ -258,22 +269,24 @@ class Database:
 
         self.execute_query(query1)
 
-    def get_songs_from_list(self, id, playlist_name):
-        query = f"""SELECT * FROM `{playlist_name}_{id}`;"""
+    def get_songs_from_list(self, discord_id: int, playlist_name: str) -> list[SqlSong]:
+        query = f"""SELECT * FROM `{playlist_name}_{discord_id}`;"""
         song_pairs = self.read_query(query)
 
-        ret_list = []
+        ret_list: list[SqlSong] = []
         for song in song_pairs:
             query2 = f"""SELECT song_id, song_name, author_name, song_link FROM Songs WHERE song_id={song[1]};"""
             retval = self.read_query(query2)[0]
-            ret_list.append(
-                {
-                    'song_id': song[0],
-                    'global_id': retval[0],
-                    'song_name': retval[1],
-                    'author_name': retval[2],
-                    'source': retval[3]
-                }
+            song_obj: SqlSong = SqlSong(
+                song_id=song[0],
+                global_id=retval[0],
+                song_name=retval[1],
+                author_name=retval[2],
+                source=retval[3]
             )
+            ret_list.append(song_obj)
 
         return ret_list
+
+
+
