@@ -33,7 +33,7 @@ class ListManager:
                 return None
             return song
 
-    def user_list_exists(self, interaction: discord.Interaction, playlist_name: str) -> None | bool:
+    async def user_list_exists(self, interaction: discord.Interaction, playlist_name: str) -> None | bool:
         try:
             user_lists: list[str] = self.db.get_user_lists(interaction.user.id)
         except SqlException:
@@ -47,7 +47,7 @@ class ListManager:
                 return True
             return False
 
-    def server_list_exists(self, interaction: discord.Interaction, playlist_name: str) -> None | bool:
+    async def server_list_exists(self, interaction: discord.Interaction, playlist_name: str) -> None | bool:
         try:
             server_lists: list[str] = self.db.get_server_lists(interaction.guild.id)
         except SqlException:
@@ -73,7 +73,7 @@ class ListManager:
             # todo: remove songs where is_good == False and where from_file == False
 
         # check if the list we want to add the song to exists
-        list_exists: bool | None = self.user_list_exists(interaction, playlist_name)
+        list_exists: bool | None = await self.user_list_exists(interaction, playlist_name)
         if list_exists is None:
             return
         elif not list_exists:
@@ -106,7 +106,7 @@ class ListManager:
             # todo: remove songs where is_good == False and where from_file == False
 
         # check if the list we want to add the song to exists
-        list_exists: bool | None = self.server_list_exists(interaction, playlist_name)
+        list_exists: bool | None = await self.server_list_exists(interaction, playlist_name)
         if list_exists is None:
             return
         elif not list_exists:
@@ -183,7 +183,7 @@ class ListManager:
             await Responder.send(f'Created playlist "{name}".', interaction)
 
     async def delete(self, interaction: discord.Interaction, playlist_name: str) -> None:
-        list_exists: bool | None = self.user_list_exists(interaction, playlist_name)
+        list_exists: bool | None = await self.user_list_exists(interaction, playlist_name)
         if list_exists is None:
             return
         elif not list_exists:
@@ -198,7 +198,7 @@ class ListManager:
             await Responder.send(f'Deleted playlist "{playlist_name}".', interaction)
 
     async def server_delete(self, interaction: discord.Interaction, playlist_name: str) -> None:
-        list_exists: bool | None = self.user_list_exists(interaction, playlist_name)
+        list_exists: bool | None = await self.user_list_exists(interaction, playlist_name)
         if list_exists is None:
             return
         elif not list_exists:
@@ -213,7 +213,7 @@ class ListManager:
             await Responder.send(f'Deleted playlist "{playlist_name}".', interaction)
 
     async def remove_from_personal(self, interaction: discord.Interaction, playlist_name: str, song_name: str) -> None:
-        list_exists: bool | None = self.user_list_exists(interaction, playlist_name)
+        list_exists: bool | None = await self.user_list_exists(interaction, playlist_name)
         if list_exists is None:
             return
         elif not list_exists:
@@ -243,7 +243,7 @@ class ListManager:
             await Responder.send(f'Song named "{song_name}" is no longer.', interaction)
 
     async def remove_from_server(self, interaction: discord.Interaction, playlist_name: str, song_name: str) -> None:
-        list_exists: bool | None = self.server_list_exists(interaction, playlist_name)
+        list_exists: bool | None = await self.server_list_exists(interaction, playlist_name)
         if list_exists is None:
             return
         elif not list_exists:
@@ -295,7 +295,7 @@ class ListManager:
                 await Responder.show_playlists(server_lists, interaction)
 
     async def show_user_playlist_songs(self, interaction: discord.Interaction, playlist_name: str) -> None:
-        list_exists: bool | None = self.user_list_exists(interaction, playlist_name)
+        list_exists: bool | None = await self.user_list_exists(interaction, playlist_name)
         if list_exists is None:
             return
         elif not list_exists:
@@ -310,7 +310,7 @@ class ListManager:
             await Responder.show_songs(playlist_songs, playlist_name, interaction)
 
     async def show_server_playlist_songs(self, interaction: discord.Interaction, playlist_name: str):
-        list_exists: bool | None = self.server_list_exists(interaction, playlist_name)
+        list_exists: bool | None = await self.server_list_exists(interaction, playlist_name)
         if list_exists is None:
             return
         elif not list_exists:

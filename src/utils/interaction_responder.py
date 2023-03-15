@@ -46,7 +46,7 @@ class InteractionResponder:
             description=msg,
             color=0xf1c40f
         )
-        await interaction.response.send_message(content='', embed=embed, epehemral=True)
+        await interaction.response.send_message(content='', embed=embed, ephemeral=True)
 
     @staticmethod
     async def show_songs(

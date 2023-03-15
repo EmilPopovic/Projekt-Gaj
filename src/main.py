@@ -16,13 +16,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import sys
-import typing
 import discord
+from typing import Literal
 from discord import app_commands
 from discord.ext import commands
 
 from components import HelpCog, CommandHandler, GuildBot, CommandButtons, ListManager
-from utils import Database, PermissionsCheck, InteractionResponder as Responder, SqlException
+from utils import Database, PermissionsCheck, InteractionResponder as Responder, SqlException, ForbiddenQueryError
 from utils.colors import c_err, c_guild, c_event, c_login, c_user
 from settings import token
 
@@ -107,8 +107,10 @@ class MainBot(commands.AutoShardedBot):
             await self.Handler.shuffle(interaction)
 
         @self.tree.command(name='swap', description='Swap places of queued songs.')
-        @app_commands.describe(first='Index of song you want to swap with second.',
-                               second='Index of song you want to swap with first.')
+        @app_commands.describe(
+            first='Index of song you want to swap with second.',
+            second='Index of song you want to swap with first.'
+        )
         async def swap_callback(interaction: discord.Interaction, first: int, second: int):
             await self.Handler.swap(interaction, first, second)
 
@@ -166,38 +168,35 @@ class MainBot(commands.AutoShardedBot):
         async def server_manifest_callback(interaction: discord.Interaction, playlist: str):
             await self.Manager.show_server_playlist_songs(interaction, playlist)
 
+        @self.tree.command(name='catalogue', description='Lists out your vast catalogue of playlists.')
+        async def catalogue(interaction: discord.Interaction):
+            await self.Manager.show_user_playlists(interaction)
+
+        @self.tree.command(name='server-catalogue', description='Lists out your server\'s vast catalogue of playlists.')
+        async def server_catalogue_callback(interaction: discord.Interaction):
+            await self.Manager.show_server_playlists(interaction)
+
         @self.tree.command(name='playlist', description='Adds songs from selected playlist to the queue.')
-        @app_commands.describe(playlist='The playlist you want to add to the queue.',
-                               number='Number of the song you want to play')
-        async def playlist_callback(interaction: discord.Interaction, playlist: str, number: int = -1):
-            ...
+        @app_commands.describe(
+            playlist='The playlist you want to add to the queue.',
+            number='Number of the song you want to play'
+        )
+        async def playlist_callback(interaction: discord.Interaction, playlist: str, number: int = -1): ...
 
         @self.tree.command(name='server-playlist', description='Adds songs from selected playlist to the queue.')
-        @app_commands.describe(playlist='The playlist you want to add to the queue.',
-                               number='Number of the song you want to play.')
-        async def server_playlist_callback(interaction: discord.Interaction, playlist: str, number: int = -1):
-            ...
+        @app_commands.describe(
+            playlist='The playlist you want to add to the queue.',
+            number='Number of the song you want to play.'
+        )
+        async def server_playlist_callback(interaction: discord.Interaction, playlist: str, number: int = -1): ...
 
         @self.tree.command(name='add', description='Add currently playing song to personal playlist.')
-        @app_commands.describe(playlist='The playlist the song will be added to.',
-                               song='The song or third party playlist you want to add to your playlist.')
+        @app_commands.describe(
+            playlist='The playlist the song will be added to.',
+            song='The song or third party playlist you want to add to your playlist.'
+        )
         async def add_callback(interaction: discord.Interaction, playlist: str, song: str = ''):
             await self.Manager.add(interaction, playlist, song)
-
-        @add_callback.autocomplete
-        @playlist_callback.autocomplete
-        async def personal_lists_autocomplete(interaction: discord.Interaction, current: str):
-            try:
-                user_playlists = self.database.get_user_lists(interaction.user.id)
-            except SqlException:
-                return []
-
-            choices = []
-            for playlist in user_playlists:
-                if current.lower() in playlist.lower():
-                    choice = app_commands.Choice.name(name=playlist, value=playlist)
-                    choices.append(choice)
-            return choices
 
         @self.tree.command(name='server-add', description='Add currently playing song to server playlist.')
         @app_commands.check(PermissionsCheck.interaction_has_permissions)
@@ -208,40 +207,95 @@ class MainBot(commands.AutoShardedBot):
                                       song: str = ''):
             await self.Manager.server_add(interaction, playlist, song)
 
-        @server_add_callback.autocomplete
-        @server_playlist_callback.autocomplete
-        async def server_lists_autocomplete(interaction: discord.Interaction, current: str):
-            try:
-                server_playlists = self.database.get_server_lists(interaction.guild.id)
-                print(server_playlists)
-            except SqlException:
-                return []
-
-            choices = []
-            for playlist in server_playlists:
-                if current.lower() in playlist.lower():
-                    choice = app_commands.Choice.name(name=playlist, value=playlist)
-                    choices.append(choice)
-            return choices
-
-        @server_add_callback.error
-        async def server_add_callback_error(interaction: discord.Interaction, _):
-            await Responder.send('Not allowed!', interaction, fail=True)
-
         @self.tree.command(name='create', description='Create a personal playlist.')
-        @app_commands.describe(name='Name of the playlist.')
-        async def create_callback(interaction: discord.Interaction, name: str):
-            await self.Manager.create(interaction, name)
+        @app_commands.describe(playlist='Name of the playlist.')
+        async def create_callback(interaction: discord.Interaction, playlist: str):
+            await self.Manager.create(interaction, playlist)
 
         @self.tree.command(name='server-create', description='Create a server playlist.')
-        @app_commands.describe(name='Name of the playlist.')
+        @app_commands.describe(playlist='Name of the playlist.')
         @app_commands.check(PermissionsCheck.interaction_has_permissions)
-        async def server_create_callback(interaction: discord.Interaction, name: str):
-            await self.Manager.server_create(interaction, name)
+        async def server_create_callback(interaction: discord.Interaction, playlist: str):
+            await self.Manager.server_create(interaction, playlist)
+
+        # COMMAND PERMISSION ERRORS
 
         @server_create_callback.error
+        @server_add_callback.error
         async def server_add_callback_error(interaction: discord.Interaction, _):
-            await Responder.send('Not allowed!', interaction, fail=True)
+            msg = 'You don\'t seem to be an admin or a dj, so you cant use this command.'
+            await Responder.send(msg, interaction, fail=True)
+
+        # AUTOCOMPLETE FUNCTIONS
+
+        def lists_options(interaction: discord.Interaction, scope: Literal['user', 'server']) -> list[str]:
+            try:
+                if scope == 'user':
+                    playlists = self.database.get_user_lists(interaction.user.id)
+                else:
+                    playlists = self.database.get_server_lists(interaction.guild.id)
+            except SqlException:
+                return []
+            except ForbiddenQueryError:
+                return []
+            else:
+                return playlists
+
+        def make_choices(current: str, choices: list[str]) -> list[app_commands.Choice]:
+            lst = []
+            for choice in choices:
+                if current.lower() in choice.lower():
+                    choice_obj = app_commands.Choice(name=choice, value=choice)
+                    lst.append(choice_obj)
+            return lst
+
+        @add_callback.autocomplete(name='playlist')
+        @playlist_callback.autocomplete(name='playlist')
+        async def user_lists_autocomplete(
+                interaction: discord.Interaction,
+                current: str
+        ) -> list[app_commands.Choice]:
+            options: list[str] = lists_options(interaction, 'user')
+            choices: list[app_commands.Choice] = make_choices(current, options)
+            return choices
+
+        @server_obliterate_callback.autocomplete(name='playlist')
+        @server_manifest_callback.autocomplete(name='playlist')
+        @server_add_callback.autocomplete(name='playlist')
+        @server_playlist_callback.autocomplete(name='playlist')
+        async def server_lists_autocomplete(
+                interaction: discord.Interaction,
+                current: str
+        ) -> list[app_commands.Choice]:
+            options: list[str] = lists_options(interaction, 'server')
+            choices: list[app_commands.Choice] = make_choices(current, options)
+            return choices
+
+        def list_songs_options(
+                interaction: discord.Interaction,
+                scope: Literal['user', 'server']
+        ) -> list[str]:
+            playlist_name = interaction.data['options'][0]['value']
+            try:
+                if scope == 'user':
+                    songs = self.database.get_songs_from_list(interaction.user.id, playlist_name)
+                else:
+                    songs = self.database.get_songs_from_list(interaction.guild.id, playlist_name)
+            except SqlException:
+                return []
+            except ForbiddenQueryError:
+                return []
+            else:
+                return [song.song_name for song in songs]
+
+        @server_obliterate_callback.autocomplete(name='song')
+        async def user_list_songs_autocomplete(
+                interaction: discord.Interaction,
+                current: str
+        ) -> list[app_commands.Choice]:
+            options: list[str] = list_songs_options(interaction, 'user')
+            choices: list[app_commands.Choice] = make_choices(current, options)
+            return choices
 
         # BOT LISTENERS #
 
