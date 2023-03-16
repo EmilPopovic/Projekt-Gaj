@@ -5,6 +5,7 @@ from mysql.connector import Error
 from .colors import *
 from .exceptions import SqlException
 from settings import host_name, user_name, user_password, db_name, port_number
+from components import song_generator
 
 
 @dataclasses.dataclass
@@ -156,7 +157,7 @@ class Database:
         lists = [elm[0] for elm in retval]
         return lists
 
-    def get_song_id(self, song):
+    def get_song_id(self, song: song_generator.Song):
         """
         Retrieves the ID of a song from the database. If the song does not exist in the database, it is added first.
         Parameters:
@@ -165,20 +166,21 @@ class Database:
             int: The ID of the specified song.
         """
         # Check if the song already exists in the database
-        query1 = f"""SELECT song_id FROM Songs WHERE song_name='{song.name}' AND author_name='{song.author.name}'"""
+        query1 = f"""SELECT song_id FROM Songs WHERE song_name='{song.name}' AND author_name='{song.author.name};"""
         song_id = self.read_query(query1)
 
         # If the song does not exist, add it to the database
         if not song_id:
             query2 = f"""INSERT INTO Songs(song_name, author_name, song_link) VALUES ('{song.name}', '{song.author.name}', '{song.source}');"""
             self.execute_query(query2)
-            query3 = f"""SELECT song_id FROM Songs WHERE song_name='{song.name}' AND author_name='{song.author.name}'"""
+            query3 = f"""SELECT song_id FROM Songs WHERE song_name='{song.name}';"""
             song_id = self.read_query(query3)
 
         # Return the ID of the song
+        print('checkpoint 1: ', song_id[0][0])
         return song_id[0][0]
 
-    def add_to_server_playlist(self, song, guild_id, playlist_name):
+    def add_to_server_playlist(self, song: song_generator.Song, guild_id, playlist_name):
         """
         Adds a song to a server playlist in the database.
         Parameters:
@@ -198,7 +200,7 @@ class Database:
         # Print a success message
         print("Song successfully added to playlist.")
 
-    def add_to_user_playlist(self, song, user_id, playlist_name):
+    def add_to_user_playlist(self, song: song_generator.Song, user_id, playlist_name):
         """
         Adds a song to a personal playlist in the database.
         Parameters:
@@ -263,9 +265,20 @@ class Database:
         self.execute_query(query1)
         self.execute_query(query2)
 
-    def remove_from_server_playlist(self, guild_id, playlist_name, song):
-        song_id = self.get_song_id(song)
-        query1 = f"""DELETE FROM `{playlist_name}_{guild_id}` WHERE actual_id={song_id};"""
+    def delete_user_list(self, user_id, playlist_name):
+        query1 = f"""DROP TABLE `{playlist_name}_{user_id}`;"""
+        query2 = f"""DELETE FROM PersonalPlaylists WHERE user_id={user_id} AND playlist_name='{playlist_name}';"""
+
+        self.execute_query(query1)
+        self.execute_query(query2)
+
+    def remove_from_server_playlist(self, guild_id, playlist_name, actual_id: int):
+        query1 = f"""DELETE FROM `{playlist_name}_{guild_id}` WHERE actual_id={actual_id};"""
+
+        self.execute_query(query1)
+
+    def remove_from_user_playlist(self, user_id, playlist_name, actual_id: int):
+        query1 = f"""DELETE FROM `{playlist_name}_{user_id}` WHERE actual_id={actual_id};"""
 
         self.execute_query(query1)
 
@@ -285,7 +298,7 @@ class Database:
                 source=retval[3]
             )
             ret_list.append(song_obj)
-
+        print(ret_list)
         return ret_list
 
 
