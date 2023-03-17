@@ -55,9 +55,10 @@ class InteractionResponder:
         interaction: discord.Interaction
     ) -> None:
         song_names = [song.song_name for song in songs]
+        song_authors = [song.author_name for song in songs]
         msg = ''
-        for song_name in song_names:
-            msg += f'{song_name}\n'
+        for song_author, song_name in zip(song_authors, song_names):
+            msg += f'{song_author} - {song_name}\n'
 
         embed = discord.Embed(
             title=playlist_name,

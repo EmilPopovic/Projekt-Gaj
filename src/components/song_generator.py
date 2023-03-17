@@ -5,13 +5,16 @@ from io import BytesIO
 from datetime import timedelta
 from threading import Thread
 
+import spotify
 from api import SpotifyInfo, SpotifySong, Author, YouTubeInfo, GeniusInfo
+from utils.sql_song import SqlSong
 from utils import SpotifyExtractError, YTDLError
 
 
 class SongGenerator:
     # unique identifier of a SongGenerator object
     last_uid = 0
+    db = None
 
     @staticmethod
     def get_songs(query: str, interaction: discord.Interaction, set_all: bool = False) -> list:
@@ -24,7 +27,11 @@ class SongGenerator:
 
         return [song for song in lst if song.is_good]
 
-    def __init__(self, query, interaction: discord.Interaction, set_all: bool = True):
+    def __init__(
+            self,
+            query: str | SpotifySong | SqlSong,
+            interaction: discord.Interaction,
+            set_all: bool = True):
         self.query = query
         self.interaction = interaction
         self.error = None
@@ -47,6 +54,7 @@ class SongGenerator:
         self.color: tuple | None = None
         self.source: str | None = None
         self.lyrics: str | None = None
+        # todo: rename to is_valid
         self.is_good: bool = True
         self.from_file: bool = False
 
@@ -59,11 +67,17 @@ class SongGenerator:
                 self.from_file = True
                 self.source = query
                 self.name = query.split('/')[-1].split('.')[0].replace('_', ' ')
+                self.author = spotify.Author()
                 return
             else:
                 self.set_spotify_info(query)
+
         elif isinstance(query, SpotifySong):
             self.set_spotify_secondary(query)
+
+        elif isinstance(query, SqlSong):
+            # todo: write this
+            self.is_good = False
 
         t = Thread(target=self.set_source_color_lyrics)
         t.start()
@@ -92,7 +106,7 @@ class SongGenerator:
         self.thumbnail_link = info.thumbnail_url
         self.spotify_link = info.url
 
-    def set_source_color_lyrics(self, thread=None):
+    def set_source_color_lyrics(self, _=None):
         # multithreading calculating color and extracting source info to save time
         source_thread = Thread(target=self.set_source, args=())
         color_thread = Thread(target=self.set_color, args=())
@@ -156,7 +170,7 @@ class SongGenerator:
 
     def timedelta_duration_to_str(self) -> str:
         """
-        Takes the self.duration attribute of SongGenerator object.
+        Takes the duration attribute of SongGenerator object.
         self.duration is a datetime.timedelta object.
         Returns a string formatted as mm:ss.
         """

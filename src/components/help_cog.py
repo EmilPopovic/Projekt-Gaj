@@ -2,6 +2,7 @@ import discord
 
 
 class HelpCog:
+    # todo: update this
     slash_commands = [
         ('/help', 'Sends a help message just like this one. How did you get here?'),
         ('/ping', 'Pong! Shows bot latency.'),

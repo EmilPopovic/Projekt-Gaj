@@ -4,11 +4,6 @@ from settings import api_key
 
 
 class GeniusInfo:
-    def __init__(self, song_name: str, author_name: str) -> None:
-        # todo: versify
-        self.lyrics = self.get_lyrics(song_name, author_name)
-        self.verses = []
-
     @staticmethod
     def get_lyrics(song_name: str, author_name: str) -> str:
         lyrics_genius = Genius(api_key)
@@ -26,8 +21,3 @@ class GeniusInfo:
         lyrics.replace('`', "'")
 
         return lyrics
-
-    @staticmethod
-    def versify(lyrics: str) -> list:
-        verses = lyrics.split('\n\n')
-        return verses

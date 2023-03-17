@@ -1,21 +1,11 @@
-import dataclasses
 import mysql.connector
 from mysql.connector import Error
 
 from .colors import *
 from .exceptions import SqlException
+from .sql_song import SqlSong
 from settings import host_name, user_name, user_password, db_name, port_number
-from components import song_generator
-
-
-@dataclasses.dataclass
-class SqlSong:
-    def __init__(self, song_id: int, global_id: int, song_name: str, author_name: str, source: str):
-        self.song_id = song_id
-        self.global_id = global_id
-        self.song_name = song_name
-        self.author_name = author_name
-        self.source = source
+from components.song_generator import SongGenerator
 
 
 class Database:
@@ -43,7 +33,7 @@ class Database:
         except Error as err:
             raise SqlException(str(err))
 
-    def execute_query(self, query) -> None:
+    def execute_query(self, query: str) -> None:
         """
         Executes specified MySQL query.
 
@@ -60,7 +50,7 @@ class Database:
         except Error as err:
             raise SqlException(str(err))
 
-    def read_query(self, query):
+    def read_query(self, query: str):
         """
         Executes specified MySQL SELECT query and returns the result.
 
@@ -79,8 +69,7 @@ class Database:
         else:
             return result
 
-    # TODO: Error handling
-    def get_channel_id(self, guild_id):
+    def get_channel_id(self, guild_id: int):
         """
         Retrieves the channel_id for a given guild_id from the 'guilds' table.
 
@@ -96,7 +85,7 @@ class Database:
 
         return self.read_query(query)[0][0]
 
-    def update_channel_id(self, guild_id, channel_id):
+    def update_channel_id(self, guild_id: int, channel_id: int):
         """
         Updates the channel_id for a given guild_id in the 'guilds' table.
 
@@ -113,7 +102,7 @@ class Database:
 
         self.execute_query(query)
 
-    def add_channel_id(self, guild_id, channel_id):
+    def add_channel_id(self, guild_id: int, channel_id: int):
         """
         Adds a new guild_id and channel_id pair to the 'guilds' table.
 
@@ -129,7 +118,7 @@ class Database:
 
         self.execute_query(query)
 
-    def get_server_lists(self, guild_id):
+    def get_server_lists(self, guild_id: int):
         """
         Retrieves a list of playlists for a given server.
         Parameters:
@@ -143,7 +132,7 @@ class Database:
         lists = [elm[0] for elm in retval]
         return lists
 
-    def get_user_lists(self, user_id):
+    def get_user_lists(self, user_id: int):
         """
         Retrieves a list of personal playlists for a given user.
         Parameters:
@@ -157,7 +146,7 @@ class Database:
         lists = [elm[0] for elm in retval]
         return lists
 
-    def get_song_id(self, song: song_generator.Song):
+    def get_song_id(self, song: SongGenerator) -> int:
         """
         Retrieves the ID of a song from the database. If the song does not exist in the database, it is added first.
         Parameters:
@@ -166,21 +155,24 @@ class Database:
             int: The ID of the specified song.
         """
         # Check if the song already exists in the database
-        query1 = f"""SELECT song_id FROM Songs WHERE song_name='{song.name}' AND author_name='{song.author.name};"""
+        song_name = song.name
+        author_name = song.author.name
+        source = song.source
+
+        query1 = f"""SELECT song_id FROM Songs WHERE song_name='{song_name}' AND author_name='{author_name}';"""
         song_id = self.read_query(query1)
 
         # If the song does not exist, add it to the database
         if not song_id:
-            query2 = f"""INSERT INTO Songs(song_name, author_name, song_link) VALUES ('{song.name}', '{song.author.name}', '{song.source}');"""
+            query2 = f"""INSERT INTO Songs(song_name, author_name, song_link) VALUES ('{song_name}', '{author_name}', '{source}');"""
             self.execute_query(query2)
-            query3 = f"""SELECT song_id FROM Songs WHERE song_name='{song.name}';"""
+            query3 = f"""SELECT song_id FROM Songs WHERE song_name='{song_name}' AND author_name='{author_name}';"""
             song_id = self.read_query(query3)
 
         # Return the ID of the song
-        print('checkpoint 1: ', song_id[0][0])
         return song_id[0][0]
 
-    def add_to_server_playlist(self, song: song_generator.Song, guild_id, playlist_name):
+    def add_to_server_playlist(self, song: SongGenerator, guild_id: int, playlist_name: str) -> None:
         """
         Adds a song to a server playlist in the database.
         Parameters:
@@ -197,10 +189,7 @@ class Database:
         query = f"""INSERT INTO `{playlist_name}_{guild_id}`(actual_id) VALUES ({song_id})"""
         self.execute_query(query)
 
-        # Print a success message
-        print("Song successfully added to playlist.")
-
-    def add_to_user_playlist(self, song: song_generator.Song, user_id, playlist_name):
+    def add_to_user_playlist(self, song: SongGenerator, user_id: int, playlist_name: str):
         """
         Adds a song to a personal playlist in the database.
         Parameters:
@@ -220,7 +209,7 @@ class Database:
         # Print a success message
         print("Song successfully added to playlist.")
 
-    def create_server_playlist(self, guild_id, playlist_name):
+    def create_server_playlist(self, guild_id: int, playlist_name: str):
         """
         Creates a new server playlist table in the database.
         Parameters:
@@ -240,7 +229,7 @@ class Database:
         self.execute_query(query)
         self.execute_query(query2)
 
-    def create_user_playlist(self, user_id, playlist_name):
+    def create_user_playlist(self, user_id: int, playlist_name: str):
         """
         Creates a new personal playlist table in the database.
         Parameters:
@@ -258,28 +247,26 @@ class Database:
             );"""
         self.execute_query(query)
 
-    def delete_server_playlist(self, guild_id, playlist_name):
+    def delete_server_playlist(self, guild_id: int, playlist_name: str):
         query1 = f"""DROP TABLE `{playlist_name}_{guild_id}`;"""
         query2 = f"""DELETE FROM ServerPlaylists WHERE guild_id={guild_id} AND playlist_name='{playlist_name}';"""
 
         self.execute_query(query1)
         self.execute_query(query2)
 
-    def delete_user_list(self, user_id, playlist_name):
+    def delete_user_playlist(self, user_id: int, playlist_name: str):
         query1 = f"""DROP TABLE `{playlist_name}_{user_id}`;"""
         query2 = f"""DELETE FROM PersonalPlaylists WHERE user_id={user_id} AND playlist_name='{playlist_name}';"""
 
         self.execute_query(query1)
         self.execute_query(query2)
 
-    def remove_from_server_playlist(self, guild_id, playlist_name, actual_id: int):
-        query1 = f"""DELETE FROM `{playlist_name}_{guild_id}` WHERE actual_id={actual_id};"""
-
+    def remove_from_user_playlist(self, user_id: int, playlist_name: str, actual_id: int):
+        query1 = f"""DELETE FROM `{playlist_name}_{user_id}` WHERE actual_id={actual_id};"""
         self.execute_query(query1)
 
-    def remove_from_user_playlist(self, user_id, playlist_name, actual_id: int):
-        query1 = f"""DELETE FROM `{playlist_name}_{user_id}` WHERE actual_id={actual_id};"""
-
+    def remove_from_server_playlist(self, guild_id: int, playlist_name: str, actual_id: int):
+        query1 = f"""DELETE FROM `{playlist_name}_{guild_id}` WHERE actual_id={actual_id};"""
         self.execute_query(query1)
 
     def get_songs_from_list(self, discord_id: int, playlist_name: str) -> list[SqlSong]:
@@ -298,8 +285,5 @@ class Database:
                 source=retval[3]
             )
             ret_list.append(song_obj)
-        print(ret_list)
+
         return ret_list
-
-
-

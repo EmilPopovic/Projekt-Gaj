@@ -36,18 +36,19 @@ class YouTubeInfo:
             yt_id = None
 
             try:
-                video = ydl.extract_info(f'ytsearch:{query}', download = False)['entries'][0]
+                video = ydl.extract_info(f'ytsearch:{query}', download=False)['entries'][0]
                 formats = video['formats']
                 for f in formats:
                     url = f['url']
+                    # todo: this should be a different link
                     if 'googlevideo.com' in url:
                         break
                 else:
                     url = None
 
                 source = url
-                title  = video['title']
-                yt_id  = video['id']
+                title = video['title']
+                yt_id = video['id']
 
             except:
                 raise YTDLError(query)

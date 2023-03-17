@@ -21,7 +21,7 @@ class CommandButtons(discord.ui.View):
             await interaction.response.edit_message(view=self)
 
     @discord.ui.button(label='◁', style=BtnStyle.grey, row=0)
-    async def previous_btn_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def previous_btn_callback(self, interaction: discord.Interaction, _: discord.ui.Button):
         await self.command_handler.previous(interaction, send_response=True)
 
     @discord.ui.button(label='▉', style=BtnStyle.grey, row=0)
@@ -34,7 +34,7 @@ class CommandButtons(discord.ui.View):
             await interaction.response.edit_message(view=self)
 
     @discord.ui.button(label='▷', style=BtnStyle.grey, row=0)
-    async def skip_btn_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def skip_btn_callback(self, interaction: discord.Interaction, _: discord.ui.Button):
         await self.command_handler.skip(interaction, send_response=True)
 
     @discord.ui.button(label='⭯', style=BtnStyle.grey, row=0)
@@ -53,11 +53,11 @@ class CommandButtons(discord.ui.View):
     # second row
 
     @discord.ui.button(label='✖', style=BtnStyle.red, row=1)
-    async def clear_btn_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def clear_btn_callback(self, interaction: discord.Interaction, _: discord.ui.Button):
         await self.command_handler.clear(interaction, send_response=True)
 
     @discord.ui.button(label='#', style=BtnStyle.red, row=1)
-    async def dc_btn_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def dc_btn_callback(self, interaction: discord.Interaction, _: discord.ui.Button):
         await self.command_handler.disconnect(interaction, send_response=True)
 
     @discord.ui.button(label='≡', style=BtnStyle.grey, row=1)
