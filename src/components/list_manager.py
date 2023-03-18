@@ -394,4 +394,7 @@ class ListManager:
         except SqlException:
             await Responder.send('Database error, try again later.', interaction, fail=True)
         else:
-            await Responder.show_songs(playlist_songs, playlist_name, interaction)
+            if len(playlist_songs) == 0:
+                await Responder.send(f'No songs on "{playlist_name}".', interaction)
+            else:
+                await Responder.show_songs(playlist_songs, playlist_name, interaction)

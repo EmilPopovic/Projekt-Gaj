@@ -186,7 +186,7 @@ class Database:
         song_id = self.get_song_id(song)
 
         # Construct and execute the query to add the song to the playlist
-        query = f"""INSERT INTO `{playlist_name}_{guild_id}`(actual_id) VALUES ({song_id});"""
+        query = f"""INSERT INTO `{playlist_name}_{guild_id}`(actual_id) VALUES ({song_id})"""
         self.execute_query(query)
 
     def add_to_user_playlist(self, song: SongGenerator, user_id: int, playlist_name: str):
@@ -203,7 +203,7 @@ class Database:
         song_id = self.get_song_id(song)
 
         # Construct and execute the query to add the song to the playlist
-        query = f"""INSERT INTO `{playlist_name}_{user_id}`(actual_id) VALUES ({song_id});"""
+        query = f"""INSERT INTO `{playlist_name}_{user_id}`(actual_id) VALUES ({song_id})"""
         self.execute_query(query)
 
         # Print a success message
@@ -223,7 +223,7 @@ class Database:
             local_id int NOT NULL auto_increment,
             actual_id int NOT NULL UNIQUE,
             PRIMARY KEY(local_id),
-            FOREIGN KEY(actual_id) REFERENCES Songs(song_id) ON DELETE CASCADE
+            FOREIGN KEY (actual_id) REFERENCES Songs(song_id) ON DELETE CASCADE
             );"""
         query2 = f"""INSERT INTO ServerPlaylists (playlist_name, guild_id) VALUES ('{playlist_name}', {guild_id});"""
         self.execute_query(query)
@@ -243,7 +243,7 @@ class Database:
             local_id int NOT NULL auto_increment,
             actual_id int NOT NULL UNIQUE,
             PRIMARY KEY(local_id),
-            FOREIGN KEY(actual_id) REFERENCES Songs(song_id) ON DELETE CASCADE
+            FOREIGN KEY (actual_id) REFERENCES Songs(song_id) ON DELETE CASCADE
             );"""
         self.execute_query(query)
 

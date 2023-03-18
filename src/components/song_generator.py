@@ -72,18 +72,26 @@ class SongGenerator:
             else:
                 self.set_spotify_info(query)
 
+            t = Thread(target=self.set_source_color_lyrics)
+            t.start()
+
+            if set_all:
+                t.join()
+
         elif isinstance(query, SpotifySong):
             self.set_spotify_secondary(query)
 
         elif isinstance(query, SqlSong):
-            # todo: write this
-            self.is_good = False
-
-        t = Thread(target=self.set_source_color_lyrics)
-        t.start()
-
-        if set_all:
-            t.join()
+            # todo: test this
+            self.name = query.song_name
+            spotify_info: SpotifySong = SpotifyInfo.spotify_get(f'{self.name} - {self.author.name}')[0]
+            self.authors = spotify_info.authors
+            self.author = self.authors[0]
+            self.duration = spotify_info.duration
+            self.thumbnail_link = spotify_info.thumbnail_url
+            self.spotify_link = spotify_info.url
+            self.set_source_color_lyrics()
+            self.source = query.source
 
     def set_spotify_info(self, query: str) -> bool | None:
         try:
