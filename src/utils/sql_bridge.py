@@ -4,7 +4,7 @@ from mysql.connector import Error
 from .colors import *
 from .exceptions import SqlException
 from .sql_song import SqlSong
-from settings import host_name, user_name, user_password, db_name, port_number
+from settings import HOST_NAME, USER_NAME, USER_PASSWORD, DB_NAME, PORT_NUMBER
 from components.song_generator import SongGenerator
 
 
@@ -23,11 +23,11 @@ class Database:
         self.connection = None
         try:
             self.connection = mysql.connector.connect(
-                host=host_name,
-                user=user_name,
-                passwd=user_password,
-                database=db_name,
-                port=port_number
+                host=HOST_NAME,
+                user=USER_NAME,
+                passwd=USER_PASSWORD,
+                database=DB_NAME,
+                port=PORT_NUMBER
             )
             print(f'{c_event("DATABASE CONNECTED")}')
         except Error as err:
@@ -83,7 +83,10 @@ class Database:
                     FROM guilds 
                     WHERE guild_id={guild_id} """
 
-        return self.read_query(query)[0][0]
+        try:
+            return self.read_query(query)[0][0]
+        except IndexError:
+            return None
 
     def update_channel_id(self, guild_id: int, channel_id: int):
         """

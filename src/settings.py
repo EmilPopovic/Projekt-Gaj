@@ -1,21 +1,21 @@
-import json
+import os
+from dotenv import load_dotenv
 
-with open('secrets.json', 'r') as f:
-    data = json.load(f)
+load_dotenv()
 
 # discord
-token = data['discord']['discord_token']
+TOKEN = os.getenv('DISCORD_TOKEN')
 
 # database
-host_name = data['database']['host_name']
-user_name = data['database']['user_name']
-user_password = data['database']['user_password']
-db_name = data['database']['db_name']
-port_number = data['database']['port_number']
+HOST_NAME = os.getenv('HOST_NAME')
+USER_NAME = os.getenv('USER_NAME')
+USER_PASSWORD = os.getenv('USER_PASSWORD')
+DB_NAME = os.getenv('DB_NAME')
+PORT_NUMBER = os.getenv('PORT_NUMBER')
 
 # spotify
-refresh_token = data['spotify']['refresh_token']
-base_64 = data['spotify']['base_64']
+REFRESH_TOKEN = os.getenv('REFRESH_TOKEN')
+BASE_64 = os.getenv('BASE_64')
 
 # genius
-api_key = data['genius']['genius_client_access_token']
+GENIUS_API_KEY = os.getenv('GENIUS_CLIENT_ACCESS_TOKEN')

@@ -21,17 +21,23 @@ from typing import Literal
 from discord import app_commands
 from discord.ext import commands
 
-from components import HelpCog, CommandHandler, GuildBot, CommandButtons, ListManager
+from components import (
+    HelpCog,
+    CommandHandler,
+    GuildBot,
+    CommandButtons,
+    ListManager,
+    SongGenerator
+)
 from utils import (
     Database,
     PermissionsCheck,
     InteractionResponder as Responder,
     SqlException,
-    ForbiddenQueryError,
-    SongGenerator
+    ForbiddenQueryError
 )
 from utils.colors import c_err, c_guild, c_event, c_login, c_user
-from settings import token
+from settings import TOKEN
 
 
 class MainBot(commands.AutoShardedBot):
@@ -68,15 +74,25 @@ class MainBot(commands.AutoShardedBot):
             latency_ms = round(self.latency * 1000)
             await Responder.send(f'Pong! My latency is {latency_ms} ms.', interaction)
 
+        @self.tree.command(name='join', description='Conjures the bot in your auditory dimension.')
+        async def join_callback(interaction: discord.Interaction):
+            await self.Handler.join(interaction)
+
         @self.tree.command(name='play', description='Adds a song/list to queue.')
         @app_commands.describe(song='The name or link of song/list.', place='Where to insert song.')
-        async def play_callback(interaction: discord.Interaction, song: str, place: int = None):
+        async def play_callback(interaction: discord.Interaction, song: str, place: int = 1):
+            await self.Handler.join(interaction, send_response = False)
             await self.Handler.play(interaction, song, place)
 
         @self.tree.command(name='file-play', description='Add a song from a file to queue.')
         @app_commands.describe(file='Audio file to play.', place='Where to insert song.')
         async def file_play_callback(interaction: discord.Interaction, file: discord.Attachment, place: int = None):
+            await self.Handler.join(interaction, send_response = False)
             await self.Handler.file_play(interaction, file, place)
+
+        @self.tree.command(name='connect', description='Connect Shteff to your voice channel.')
+        async def connect_callback(interaction: discord.Interaction):
+            await self.Handler.connect(interaction)
 
         @self.tree.command(name='skip', description='Skips to the next queued song.')
         async def skip_callback(interaction: discord.Interaction):
@@ -363,7 +379,6 @@ class MainBot(commands.AutoShardedBot):
         @self.event
         async def on_guild_join(guild) -> None:
             self.guild_bots[guild.id] = await GuildBot(guild)
-            # todo: delete GuildBot and database entry when leaving guild
 
     async def on_ready(self) -> None:
         """
@@ -402,4 +417,4 @@ if __name__ == '__main__':
     """Main is the beginning of everything."""
     database = Database()
     bot = MainBot()
-    bot.run(token)
+    bot.run(TOKEN)

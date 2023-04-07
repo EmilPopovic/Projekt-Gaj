@@ -5,7 +5,6 @@ from io import BytesIO
 from datetime import timedelta
 from threading import Thread
 
-import spotify
 from api import SpotifyInfo, SpotifySong, Author, YouTubeInfo, GeniusInfo
 from utils.sql_song import SqlSong
 from utils import SpotifyExtractError, YTDLError
@@ -133,7 +132,7 @@ class SongGenerator:
             return
 
         try:
-            yt_info = YouTubeInfo(f'{self.author} - {self.name}')
+            yt_info = YouTubeInfo(f'{self.author} {self.name}')
         except YTDLError:
             self.is_good = False
             return
@@ -185,6 +184,13 @@ class SongGenerator:
         minutes = self.duration.seconds // 60
         seconds = self.duration.seconds % 60
         return f'{minutes}:{seconds:02}'
+
+    def cmd_message_print(self, number: int, is_current=False) -> str:
+        msg = f'{number} {self.author.name} - {self.name}'
+        if is_current:
+            return f'**{msg}**'
+        else:
+            return msg
 
     def __eq__(self, other) -> bool:
         return self.uid == other.uid

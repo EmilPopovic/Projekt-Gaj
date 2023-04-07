@@ -1,12 +1,12 @@
 from lyricsgenius import Genius
 
-from settings import api_key
+from settings import GENIUS_API_KEY
 
 
 class GeniusInfo:
     @staticmethod
     def get_lyrics(song_name: str, author_name: str) -> str:
-        lyrics_genius = Genius(api_key)
+        lyrics_genius = Genius(GENIUS_API_KEY)
         song_info = lyrics_genius.search_song(author_name, song_name)
         lyrics = song_info.lyrics
 

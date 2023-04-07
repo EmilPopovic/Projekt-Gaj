@@ -5,6 +5,7 @@ from .list_manager import ListManager
 from .player import Player
 from .song_generator import SongGenerator
 from .command_buttons import CommandButtons
+from .song_queue import SongQueue
 
 print(
     """

@@ -3,8 +3,10 @@ from datetime import timedelta
 from dataclasses import dataclass
 
 from utils import SpotifyExtractError
-from settings import refresh_token, base_64
+from settings import REFRESH_TOKEN, BASE_64
 
+
+# todo: maybe use spotipy???
 
 @dataclass
 class Author:
@@ -90,7 +92,7 @@ class SpotifyInfo:
     def __search_spotify(cls, query: str) -> SpotifySong:
         cls.__call_refresh()
 
-        query_parameter = query.replace(' ', '&20')
+        query_parameter = query.replace(' ', '%20')
         query = f'https://api.spotify.com/v1/search?q={query_parameter}&type=track&limit=1&offset=0'
         data = cls.__get_response(query)
 
@@ -170,18 +172,6 @@ class SpotifyInfo:
         except KeyError:
             raise SpotifyExtractError(data)
 
-    # todo: this
-    # @classmethod
-    # def get_recommendations(cls, url: str) -> list[SpotifySong]:
-    #     cls.__call_refresh()
-    #
-    #     track_id = url.split('track/')[1].split('?')[0]
-    #     query = f'{track_id}'
-    #     data = cls.__get_response(query)
-    #
-    #     # radio link: https://open.spotify.com/playlist/37i9dQZF1E8HPdZIjk7v8x
-    #     # track link: 2auyE53lrWpCM47XXky6X0
-
     @classmethod
     def __get_artist(cls, url) -> list[SpotifySong]:
         cls.__call_refresh()
@@ -227,38 +217,11 @@ class SpotifyInfo:
             'https://accounts.spotify.com/api/token',
             data={
                 'grant_type': 'refresh_token',
-                'refresh_token': refresh_token
+                'refresh_token': REFRESH_TOKEN
             },
             headers={
-                'Authorization': 'Basic ' + base_64
+                'Authorization': f'Basic {BASE_64}'
             }
         )
         response_json = response.json()
         cls.spotify_token = response_json['access_token']
-
-# todo: finish this
-# import json
-# import spotipy
-# from spotipy.oauth2 import SpotifyOAuth
-#
-# with open('venv\\secrets.json', 'r') as f:
-#     json_data = json.load(f)['spotify']
-#
-# # refresh_token = json_data['refresh_token']
-# # base_64 = json_data['base_64']
-#
-# scope = 'user-playlist-recently-played'
-#
-# sp = spotipy.Spotify(
-#     auth_manager = SpotifyOAuth(
-#         client_id = json_data['spotify_client_id'],
-#         client_secret = json_data['spotify_client_secret'],
-#         redirect_uri = json_data['spotify_client_secret'],
-#         scope = scope
-#     )
-# )
-#
-# results = sp.current_user_recently_played()
-# for i, item in enumerate(results['items']):
-#     track = item['track']
-#     print(i, track['artist'][0]['name'], ' - ', track['name'])

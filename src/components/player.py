@@ -311,7 +311,6 @@ class Player(commands.Cog):
         """
         await self.work_queue.put(self.get_coro_id())
         async with self.lock:
-            # todo: use transformers for this check
             queue_len = len(self.queue[self.p_index + 1:])
             if i == 0 and j == 0:
                 raise CommandExecutionError('Arguments must be greater than 0.')
@@ -414,6 +413,7 @@ class Player(commands.Cog):
             await self.voice_client.move_to(self.voice_channel)
 
     async def __play_audio(self, song: SongGenerator) -> None:
+        song.set_source_color_lyrics()
         try:
             await self.__join()
         except FailedToConnectError:
@@ -439,7 +439,7 @@ class Player(commands.Cog):
 
         await self.__play_next()
 
-    def __get_next(self):
+    def __get_next(self) -> tuple[SongGenerator | None, int | None]:
         next_index = self.p_index
         if self.queue[self.p_index + 1:]:
             if not self.is_looped_single and self.is_playing or self.p_index == -1:
@@ -454,7 +454,7 @@ class Player(commands.Cog):
 
     async def __play_next(self):
         next_song, next_index = self.__get_next()
-        self.p_index = next_index
+        self.p_index = next_index if next_index is not None else self.p_index
         if next_song is not None:
             asyncio.create_task(self.__play_audio(next_song))
         else:

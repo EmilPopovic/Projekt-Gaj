@@ -1,8 +1,7 @@
 from asyncinit import asyncinit
+from collections import deque
 
-import discord
-
-from .player import Player
+from .player_new import Player
 from .command_buttons import CommandButtons as Buttons
 from utils import *
 
@@ -78,54 +77,49 @@ class GuildBot(Player):
         its background.
         """
         # message content
-        # todo: make history display a 50/50 split between history and queue
-        # todo: maybe add a mode where songs are shown in order and the current song is bold
-        # todo: if that is made, make list showing buttons a single button that loops through possible display modes
         # todo: adjust docstring when behaviour changed
         # todo: adjust docstring after lyrics moved to separate message
-        content = ''
 
-        if self.show_history:
-            history = self.queue[:self.p_index]
-            history.reverse()
+        # PRINTING THE CURRENT SONG QUEUE STATUS
+        song_lst = deque([])
 
-            if history:
-                content += '**History:**\n'
+        if self.queue.current is None:
+            song_lst.append('**0 No song.**')
+        else:
+            song_lst.append(self.queue.current.cmd_message_print(0, is_current=True))
 
-                for i, song in enumerate(history):
-                    content += f'**{i + 1}** {song.to_msg_format()}\n'
+        played = self.queue.played
+        chars = 0
+        for i, song in zip(range(-1, len(played), -1), played):
+            if song is not None:
+                output_text = song.cmd_message_print(i)
+                chars += len(output_text)
+                song_lst.appendleft(output_text)
 
-                if self.queue[self.p_index + 1:]:
-                    content += '\n'
+            # todo: check number calculation
+            if chars > 500:
+                song_lst.appendleft(f'And {i - len(played)} more...')
+                break
 
-        if self.queue[self.p_index + 1:]:
-            i = self.p_index + 1
-            added = 0
-            content_len = 0
+        upcoming = self.queue.upcoming
+        chars = 0
+        for i, song in enumerate(upcoming):
+            if song is not None:
+                output_text = song.cmd_message_print(i+1)
+                chars += len(output_text)
+                song_lst.append(output_text)
 
-            song_strs: list[str] = []
+            # todo: check number calculation
+            if chars > 500:
+                song_lst.appendleft(f'And {len(upcoming) - i} more...')
+                break
 
-            # God save me
-            while i < len(self.queue) and content_len < 1800:
-                if self.short_queue and i - self.p_index >= 5:
-                    break
-                song = self.queue[i]
-                to_add = f'**{i - self.p_index}** {song.to_msg_format()}\n'
-                song_strs.append(to_add)
-                content_len += len(to_add)
-                added += 1
-                i += 1
+        content = '\n'.join(song_lst)
 
-            content += '**Queue:**\n'
-            not_shown = len(self.queue[self.p_index + 1:]) - added
-            if not_shown:
-                content += f'And **{not_shown}** more...\n\n'
-            content += ''.join(song_strs[::-1])
+        # CREATING THE MESSAGE EMBED
+        if not self.queue.upcoming.is_empty() and self.is_playing or self.is_paused:
+            current = self.queue.current
 
-        if self.queue[self.p_index:] and self.is_playing or self.is_paused:
-            current = self.queue[self.p_index]
-
-            # create embed
             if current.color:
                 color = discord.Color.from_rgb(*current.color)
             else:
@@ -176,7 +170,7 @@ class GuildBot(Player):
 
                 embed.set_footer(text='We do not guarantee the accuracy of the data provided.')
 
-            # set lyrics message
+            # CREATING A LYRICS MESSAGE
             if self.show_lyrics:
                 lyrics_msg_content = f'**Lyrics:\n\n**{current.lyrics}\n\n'
                 if self.lyrics_message is None:
@@ -192,6 +186,7 @@ class GuildBot(Player):
         else:
             # set idle embed
             embed = self.default_embed
+            content = ''
             embed.set_footer(text='')
             await self.delete_lyrics_message()
 
