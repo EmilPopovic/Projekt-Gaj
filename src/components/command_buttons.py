@@ -12,7 +12,7 @@ class CommandButtons(discord.ui.View):
 
     # first row
 
-    @discord.ui.button(label='⎇', style=BtnStyle.grey, row=0)
+    @discord.ui.button(label= '⎇', style=BtnStyle.grey, row=0)
     async def shuffle_btn_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
         success = await self.command_handler.shuffle(interaction, send_response=False)
         if success:
@@ -20,11 +20,11 @@ class CommandButtons(discord.ui.View):
             button.style = BtnStyle.green if guild_bot.is_shuffled else BtnStyle.grey
             await interaction.response.edit_message(view=self)
 
-    @discord.ui.button(label='◁', style=BtnStyle.grey, row=0)
+    @discord.ui.button(label= '◁', style=BtnStyle.grey, row=0)
     async def previous_btn_callback(self, interaction: discord.Interaction, _: discord.ui.Button):
         await self.command_handler.previous(interaction, send_response=True)
 
-    @discord.ui.button(label='▉', style=BtnStyle.grey, row=0)
+    @discord.ui.button(label= '▉', style=BtnStyle.grey, row=0)
     async def pause_btn_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
         success = await self.command_handler.pause(interaction, send_response=False)
         if success:
@@ -33,11 +33,11 @@ class CommandButtons(discord.ui.View):
             button.label = '▶' if guild_bot.is_paused else '▉'
             await interaction.response.edit_message(view=self)
 
-    @discord.ui.button(label='▷', style=BtnStyle.grey, row=0)
+    @discord.ui.button(label= '▷', style=BtnStyle.grey, row=0)
     async def skip_btn_callback(self, interaction: discord.Interaction, _: discord.ui.Button):
         await self.command_handler.skip(interaction, send_response=True)
 
-    @discord.ui.button(label='⭯', style=BtnStyle.grey, row=0)
+    @discord.ui.button(label= '⭯', style=BtnStyle.grey, row=0)
     async def loop_btn_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
         success = await self.command_handler.loop(interaction, send_response=False)
         if not success: return
@@ -52,15 +52,15 @@ class CommandButtons(discord.ui.View):
 
     # second row
 
-    @discord.ui.button(label='✖', style=BtnStyle.red, row=1)
+    @discord.ui.button(label= '✖', style=BtnStyle.red, row=1)
     async def clear_btn_callback(self, interaction: discord.Interaction, _: discord.ui.Button):
         await self.command_handler.clear(interaction, send_response=True)
 
-    @discord.ui.button(label='#', style=BtnStyle.red, row=1)
+    @discord.ui.button(label= '#', style=BtnStyle.red, row=1)
     async def dc_btn_callback(self, interaction: discord.Interaction, _: discord.ui.Button):
         await self.command_handler.disconnect(interaction, send_response=True)
 
-    @discord.ui.button(label='≡', style=BtnStyle.grey, row=1)
+    @discord.ui.button(label= '≡', style=BtnStyle.grey, row=1)
     async def lyrics_btn_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
         success = await self.command_handler.lyrics(interaction, send_response=False)
         if not success: return
@@ -68,7 +68,7 @@ class CommandButtons(discord.ui.View):
         button.style = BtnStyle.green if guild_bot.show_lyrics else BtnStyle.grey
         await interaction.response.edit_message(view=self)
 
-    @discord.ui.button(label='⯆', style=BtnStyle.grey, row=1)
+    @discord.ui.button(label= '⯆', style=BtnStyle.grey, row=1)
     async def queue_btn_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
         success = await self.command_handler.queue(interaction, send_response=False)
         if not success: return
@@ -76,7 +76,7 @@ class CommandButtons(discord.ui.View):
         button.style = BtnStyle.green if guild_bot.short_queue else BtnStyle.grey
         await interaction.response.edit_message(view=self)
 
-    @discord.ui.button(label='⯅', style=BtnStyle.grey, row=1)
+    @discord.ui.button(label= '⯅', style=BtnStyle.grey, row=1)
     async def history_btn_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
         success = await self.command_handler.history(interaction, send_response=False)
         if not success: return

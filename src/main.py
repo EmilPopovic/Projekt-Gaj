@@ -27,7 +27,8 @@ from components import (
     GuildBot,
     CommandButtons,
     ListManager,
-    SongGenerator
+    SongGenerator,
+    SongQueue
 )
 from utils import (
     Database,
@@ -42,10 +43,15 @@ from settings import TOKEN
 
 class MainBot(commands.AutoShardedBot):
     """
-    This is the MainBot docstring, please finish it.
+    The MainBot class is the main Bot client of the application.
+
+    This class contains:
+    > callback functions for all application commands
+    > autocomplete functions for certain application commands
+    > discord event listeners
+    > initialisation code for bot, GuildBots and the database connection
     """
 
-    # TODO: docstring
     def __init__(self, intents=discord.Intents.all()):
         super().__init__(command_prefix='!', intents=intents)
         GuildBot.bot = self
@@ -57,8 +63,13 @@ class MainBot(commands.AutoShardedBot):
         PermissionsCheck.db = self.database
         SongGenerator.db = self.database
 
-        self.Manager = ListManager(self, self.database)
-        self.Handler = CommandHandler(self)
+        list_manager = ListManager(self, database)
+        command_handler = CommandHandler(self)
+
+        SongQueue.Manager = list_manager
+
+        self.Manager = list_manager
+        self.Handler = command_handler
 
         CommandButtons.command_handler = self.Handler
         CommandButtons.bot = self
@@ -79,13 +90,13 @@ class MainBot(commands.AutoShardedBot):
             await self.Handler.join(interaction)
 
         @self.tree.command(name='play', description='Adds a song/list to queue.')
-        @app_commands.describe(song='The name or link of song/list.', place='Where to insert song.')
+        @app_commands.describe(song= 'The name or link of song/list.', place= 'Where to insert song.')
         async def play_callback(interaction: discord.Interaction, song: str, place: int = 1):
             await self.Handler.join(interaction, send_response = False)
             await self.Handler.play(interaction, song, place)
 
         @self.tree.command(name='file-play', description='Add a song from a file to queue.')
-        @app_commands.describe(file='Audio file to play.', place='Where to insert song.')
+        @app_commands.describe(file= 'Audio file to play.', place= 'Where to insert song.')
         async def file_play_callback(interaction: discord.Interaction, file: discord.Attachment, place: int = None):
             await self.Handler.join(interaction, send_response = False)
             await self.Handler.file_play(interaction, file, place)
@@ -151,23 +162,23 @@ class MainBot(commands.AutoShardedBot):
             await self.Handler.goto(interaction, number)
 
         @self.tree.command(name='create', description='Create a personal playlist.')
-        @app_commands.describe(playlist='Name of the playlist.')
+        @app_commands.describe(playlist= 'Name of the playlist.')
         async def create_callback(interaction: discord.Interaction, playlist: str):
             await self.Manager.create_playlist(interaction, playlist, 'user')
 
         @self.tree.command(name='server-create', description='Create a server playlist.')
-        @app_commands.describe(playlist='Name of the playlist.')
+        @app_commands.describe(playlist= 'Name of the playlist.')
         @app_commands.check(PermissionsCheck.interaction_has_permissions)
         async def server_create_callback(interaction: discord.Interaction, playlist: str):
             await self.Manager.create_playlist(interaction, playlist, 'server')
 
         @self.tree.command(name='delete', description='Deletes a personal playlist.')
-        @app_commands.describe(playlist='The name of the playlist to delete.')
+        @app_commands.describe(playlist= 'The name of the playlist to delete.')
         async def delete_callback(interaction: discord.Interaction, playlist: str):
             await self.Manager.delete_playlist(interaction, playlist, 'user')
 
         @self.tree.command(name='server-delete', description='Deletes a server playlist.')
-        @app_commands.describe(playlist='The name of the playlist to delete.')
+        @app_commands.describe(playlist= 'The name of the playlist to delete.')
         @app_commands.check(PermissionsCheck.interaction_has_permissions)
         async def server_delete_callback(interaction: discord.Interaction, playlist: str):
             await self.Manager.delete_playlist(interaction, playlist, 'server')
@@ -182,7 +193,7 @@ class MainBot(commands.AutoShardedBot):
 
         @self.tree.command(name='server-add', description='Add currently playing song to server playlist.')
         @app_commands.check(PermissionsCheck.interaction_has_permissions)
-        @app_commands.describe(playlist='The playlist the song will be added to.',
+        @app_commands.describe(playlist= 'The playlist the song will be added to.',
                                song='The song or third party playlist you want to add to the server playlist.')
         async def server_add_callback(interaction: discord.Interaction,
                                       playlist: str,
@@ -224,7 +235,7 @@ class MainBot(commands.AutoShardedBot):
             name='manifest',
             description='Forces the songs from your list to take a corporeal form and appear before your eyes.'
         )
-        @app_commands.describe(playlist='Name of the playlist.')
+        @app_commands.describe(playlist= 'Name of the playlist.')
         async def manifest_callback(interaction: discord.Interaction, playlist: str):
             await self.Manager.show_playlist_songs(interaction, playlist, 'user')
 
@@ -232,23 +243,37 @@ class MainBot(commands.AutoShardedBot):
             name='server-manifest',
             description='Forces the songs from your server list to take a corporeal form and appear before your eyes.'
         )
-        @app_commands.describe(playlist='Name of the playlist.')
+        @app_commands.describe(playlist= 'Name of the playlist.')
         async def server_manifest_callback(interaction: discord.Interaction, playlist: str):
             await self.Manager.show_playlist_songs(interaction, playlist, 'server')
 
         @self.tree.command(name='playlist', description='Adds songs from selected playlist to the queue.')
         @app_commands.describe(
             playlist='The playlist you want to add to the queue.',
-            song='The song to play.'
+            song='The song to play.',
+            place = 'Where to insert the playlist.'
         )
-        async def playlist_callback(interaction: discord.Interaction, playlist: str, song: str = ''): ...
+        async def playlist_callback(
+                interaction: discord.Interaction,
+                playlist: str,
+                song: str = '',
+                place: int = 1
+        ) -> None:
+            await self.Handler.playlist_play(interaction, song, playlist, 'user', place)
 
         @self.tree.command(name='server-playlist', description='Adds songs from selected playlist to the queue.')
         @app_commands.describe(
             playlist='The playlist you want to add to the queue.',
-            song='The song to play.'
+            song='The song to play.',
+            place ='Where to insert the playlist.'
         )
-        async def server_playlist_callback(interaction: discord.Interaction, playlist: str, song: str = ''): ...
+        async def server_playlist_callback(
+                interaction: discord.Interaction,
+                playlist: str,
+                song: str = '',
+                place: int = 1
+        ) -> None:
+            await self.Handler.playlist_play(interaction, song, playlist, 'server', place)
 
         # COMMAND PERMISSION ERRORS
 
@@ -311,6 +336,18 @@ class MainBot(commands.AutoShardedBot):
                 interaction: discord.Interaction,
                 scope: Literal['user', 'server']
         ) -> list[str]:
+            """
+            Function returns the list of song names that are contained in a playlist with a certain name.
+
+            The name of the playlist is taken from the first input parameter of an application command.
+
+            Parameters:
+                interaction (discord.Interaction): interaction object of the application command being autocompleted
+                scope (str 'user' or 'server'): determines if we are searching in a user or a server playlist
+
+            Returns:
+                list: the list of song names of the specified playlist
+            """
             playlist_name = interaction.data['options'][0]['value']
             try:
                 if scope == 'user':

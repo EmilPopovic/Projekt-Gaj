@@ -53,7 +53,6 @@ class SongGenerator:
         self.color: tuple | None = None
         self.source: str | None = None
         self.lyrics: str | None = None
-        # todo: rename to is_valid
         self.is_good: bool = True
         self.from_file: bool = False
 
@@ -66,7 +65,7 @@ class SongGenerator:
                 self.from_file = True
                 self.source = query
                 self.name = query.split('/')[-1].split('.')[0].replace('_', ' ')
-                self.author = spotify.Author()
+                self.author = Author()
                 return
             else:
                 self.set_spotify_info(query)
@@ -132,7 +131,7 @@ class SongGenerator:
             return
 
         try:
-            yt_info = YouTubeInfo(f'{self.author} {self.name}')
+            yt_info = YouTubeInfo(f'{self.author.name} {self.name}')
         except YTDLError:
             self.is_good = False
             return

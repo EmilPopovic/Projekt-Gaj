@@ -36,7 +36,7 @@ class YouTubeInfo:
             yt_id = None
 
             try:
-                video = ydl.extract_info(f'ytsearch:{query}', download=False)['entries'][0]
+                video = ydl.extract_info(f'ytsearch:{query.replace(" ", "_")}', download=False)['entries'][0]
                 formats = video['formats']
                 for f in formats:
                     url = f['url']

@@ -48,6 +48,8 @@ class SongQueue:
         self.upcoming: Queue = Queue()
         self.played: Stack = Stack()
 
+        self.Manager = None
+
         self.current = None
 
         self.unshuffled: Queue = Queue()
@@ -175,9 +177,30 @@ class SongQueue:
             raise ValueError('Must be inserted into a place with a positive number.')
 
         songs: list[SongGenerator] = SongGenerator.get_songs(query, interaction)
+        self.extend_list(insert_place, songs)
 
-        for song in songs[::-1]:
-            self.upcoming.insert(insert_place-1, song)
+    def add_playlist(
+            self,
+            playlist_name: str,
+            interaction: discord.Interaction,
+            scope: typing.Literal['user', 'server'],
+            song_name: str = '',
+            insert_place: int = 1
+    ) -> None:
+        if insert_place <= 0:
+            raise ValueError('Must be inserted into a place with a positive number.')
+
+        playlist_songs = self.Manager.songs_from_playlist(interaction, playlist_name, scope, song_name)
+
+        song_objs: list[SongGenerator] = [SongGenerator(song, interaction) for song in playlist_songs]
+        self.extend_list(insert_place, song_objs)
+
+    def extend_list(self, insert_place: int, songs: list[SongGenerator]):
+        if insert_place == 1:
+            self.upcoming.extend(songs)
+        else:
+            for song in songs[::-1]:
+                self.upcoming.insert(insert_place-1, song)
 
         if self.is_shuffled:
             self.unshuffled.extend(songs)
@@ -199,15 +222,3 @@ class SongQueue:
         for song in self.upcoming:
             retstr += f'   {song}\n'
         return retstr
-
-
-if __name__ == '__main__':
-    queue = SongQueue()
-    print(queue)
-    queue.test_add(['Bloodshot'])
-    print(queue)
-    queue.next()
-    print(queue)
-    for i in range(10):
-        queue.next()
-    print(queue)

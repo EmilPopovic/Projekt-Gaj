@@ -1,7 +1,7 @@
 from asyncinit import asyncinit
 from collections import deque
 
-from .player_new import Player
+from .player import Player
 from .command_buttons import CommandButtons as Buttons
 from utils import *
 
@@ -79,6 +79,8 @@ class GuildBot(Player):
         # message content
         # todo: adjust docstring when behaviour changed
         # todo: adjust docstring after lyrics moved to separate message
+
+        print('updated ui')
 
         # PRINTING THE CURRENT SONG QUEUE STATUS
         song_lst = deque([])
