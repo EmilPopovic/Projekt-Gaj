@@ -31,17 +31,12 @@ class ListManager:
             If no song is currently playing or the current song is invalid or unplayable, the function returns None.
         """
         guild_bot = self.main_bot.get_bot_from_interaction(interaction)
-        p_index = guild_bot.p_index
-        queue = guild_bot.queue
 
-        try:
-            song = queue[p_index]
-        except IndexError:
+        song = guild_bot.queue.current
+
+        if song is None or not song.is_good or song.from_file:
             return None
-        else:
-            if not song.is_good or song.from_file:
-                return None
-            return song
+        return song
 
     async def songs_from_playlist(
             self,
@@ -105,7 +100,7 @@ class ListManager:
             if scope == 'user':
                 lists = self.db.get_user_lists(interaction.user.id)
             else:
-                lists = self.db.get_user_lists(interaction.guild.id)
+                lists = self.db.get_server_lists(interaction.guild.id)
         except SqlException:
             await Responder.send('Database error, try again later.', interaction, fail=True)
             return None
