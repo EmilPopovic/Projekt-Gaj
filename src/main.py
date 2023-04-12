@@ -259,6 +259,7 @@ class MainBot(commands.AutoShardedBot):
                 song: str = '',
                 place: int = 1
         ) -> None:
+            await self.Handler.join(interaction, send_response = False)
             await self.Handler.playlist_play(interaction, song, playlist, 'user', place)
 
         @self.tree.command(name='server-playlist', description='Adds songs from selected playlist to the queue.')
@@ -273,6 +274,7 @@ class MainBot(commands.AutoShardedBot):
                 song: str = '',
                 place: int = 1
         ) -> None:
+            await self.Handler.join(interaction, send_response = False)
             await self.Handler.playlist_play(interaction, song, playlist, 'server', place)
 
         # COMMAND PERMISSION ERRORS

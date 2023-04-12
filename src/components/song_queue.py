@@ -44,11 +44,11 @@ class Stack(deque):
 
 
 class SongQueue:
+    Manager = None
+
     def __init__(self):
         self.upcoming: Queue = Queue()
         self.played: Stack = Stack()
-
-        self.Manager = None
 
         self.current = None
 
@@ -179,7 +179,7 @@ class SongQueue:
         songs: list[SongGenerator] = SongGenerator.get_songs(query, interaction)
         self.extend_list(insert_place, songs)
 
-    def add_playlist(
+    async def add_playlist(
             self,
             playlist_name: str,
             interaction: discord.Interaction,
@@ -190,7 +190,7 @@ class SongQueue:
         if insert_place <= 0:
             raise ValueError('Must be inserted into a place with a positive number.')
 
-        playlist_songs = self.Manager.songs_from_playlist(interaction, playlist_name, scope, song_name)
+        playlist_songs = await self.Manager.songs_from_playlist(interaction, playlist_name, scope, song_name)
 
         song_objs: list[SongGenerator] = [SongGenerator(song, interaction) for song in playlist_songs]
         self.extend_list(insert_place, song_objs)

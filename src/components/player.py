@@ -6,7 +6,7 @@ import time
 from discord.ext import commands
 
 from .song_queue import SongQueue as Queue
-from utils import CommandExecutionError, FailedToConnectError, SqlSong
+from utils import CommandExecutionError, FailedToConnectError
 from utils.colors import c_event, c_guild
 
 
@@ -50,7 +50,6 @@ class Player(commands.Cog):
         async with self.lock:
             await self.join()
 
-    # @await_update_message
     async def reset_bot_states(self) -> None:
         async with self.lock:
             self.looped_status = 'none'
@@ -59,16 +58,14 @@ class Player(commands.Cog):
 
             self.queue = Queue()
 
-            # todo: should we reset this
+            # todo: should we reset this?
             self.voice_client = None
             self.voice_channel = None
 
-            # todo: add reset method to guild bot class
-            self.guild_bot.reset()
+            await self.guild_bot.reset()
 
             await self.guild_bot.update_msg()
 
-    # @await_update_message
     async def shuffle_queue(self) -> None:
         async with self.lock:
             if self.queue.is_shuffled:
@@ -78,7 +75,6 @@ class Player(commands.Cog):
 
             await self.guild_bot.update_msg()
 
-    # @await_update_message
     async def cycle_loop(self) -> None:
         async with self.lock:
             if self.queue.loop_status == 'none':
@@ -90,14 +86,12 @@ class Player(commands.Cog):
 
             await self.guild_bot.update_msg()
 
-    # @await_update_message
     async def go_to_previous(self) -> None:
         async with self.lock:
             self.queue.previous()
 
             await self.guild_bot.update_msg()
 
-    # @await_update_message
     async def pause(self) -> None:
         async with self.lock:
             if self.is_paused:
@@ -109,7 +103,6 @@ class Player(commands.Cog):
 
             await self.guild_bot.update_msg()
 
-    # @await_update_message
     async def skip(self) -> None:
         async with self.lock:
             if self.voice_client is not None:
@@ -122,7 +115,6 @@ class Player(commands.Cog):
 
             await self.guild_bot.update_msg()
 
-    # @await_update_message
     async def previous(self) -> None:
         async with self.lock:
             if self.voice_client is not None:
@@ -136,7 +128,6 @@ class Player(commands.Cog):
 
             await self.guild_bot.update_msg()
 
-    # @await_update_message
     async def clear(self) -> None:
         async with self.lock:
             self.queue = Queue()
@@ -144,21 +135,19 @@ class Player(commands.Cog):
             self.is_playing = False
             self.is_paused = False
 
-            self.guild_bot.reset()
+            await self.guild_bot.reset()
 
             await self.guild_bot.update_msg()
 
-    # @await_update_message
     async def disconnect(self, disconnect=True) -> None:
         async with self.lock:
             if disconnect:
                 asyncio.create_task(self.voice_client.disconnect())
             await self.reset_bot_states()
-            self.guild_bot.reset()
+            await self.guild_bot.reset()
 
             await self.guild_bot.update_msg()
 
-    # @await_update_message
     async def swap(self, i: int, j: int) -> None:
         async with self.lock:
             try:
@@ -169,7 +158,6 @@ class Player(commands.Cog):
 
             await self.guild_bot.update_msg()
 
-    # @await_update_message
     async def remove(self, i: int) -> None:
         async with self.lock:
             try:
@@ -180,7 +168,6 @@ class Player(commands.Cog):
 
             await self.guild_bot.update_msg()
 
-    # @await_update_message
     async def goto(self, i: int) -> None:
         async with self.lock:
             try:
@@ -211,7 +198,7 @@ class Player(commands.Cog):
             if playlist_name is None:
                 self.queue.add_songs(query, interaction, insert_place)
             else:
-                self.queue.add_playlist(playlist_name, interaction, playlist_scope, insert_place, query)
+                await self.queue.add_playlist(playlist_name, interaction, playlist_scope, query, insert_place)
         except ValueError as e:
             error_msg = e.args[0]
             raise CommandExecutionError(error_msg)
@@ -289,8 +276,9 @@ class Player(commands.Cog):
             except discord.ClientException:
                 continue
 
-            coroutine = self.guild_bot.update_msg()
-            task = self.update_message_loop.create_task(coroutine)
+            # todo: update message here
+            # coroutine = self.guild_bot.update_msg()
+            # task = self.update_message_loop.create_task(coroutine)
 
             self.playing_thread = threading.Thread(target = self._play_audio_thread(), args = ())
             self.playing_thread.start()

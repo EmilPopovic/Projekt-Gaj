@@ -53,10 +53,11 @@ class GuildBot(Player):
         # update message
         await self.update_msg()
 
-    def reset_flags(self) -> None:
+    async def reset(self) -> None:
         self.show_lyrics = False
         self.short_queue = False
         self.show_history = False
+        await self.update_msg()
 
     async def update_msg(self) -> None:
         """
@@ -79,8 +80,6 @@ class GuildBot(Player):
         # message content
         # todo: adjust docstring when behaviour changed
         # todo: adjust docstring after lyrics moved to separate message
-
-        print('updated ui')
 
         # PRINTING THE CURRENT SONG QUEUE STATUS
         song_lst = deque([])

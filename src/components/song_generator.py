@@ -55,6 +55,7 @@ class SongGenerator:
         self.lyrics: str | None = None
         self.is_good: bool = True
         self.from_file: bool = False
+        self.from_playlist: bool = False
 
         if isinstance(query, str):
             if 'www.youtube.com' in query:
@@ -81,8 +82,9 @@ class SongGenerator:
 
         elif isinstance(query, SqlSong):
             # todo: test this
+            self.from_playlist = True
             self.name = query.song_name
-            spotify_info: SpotifySong = SpotifyInfo.spotify_get(f'{self.name} - {self.author.name}')[0]
+            spotify_info: SpotifySong = SpotifyInfo.spotify_get(f'{self.name} - {query.author_name}')[0]
             self.authors = spotify_info.authors
             self.author = self.authors[0]
             self.duration = spotify_info.duration
