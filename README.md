@@ -43,7 +43,7 @@ https://accounts.spotify.com/authorize?response_type=code&client_id=$CLIENT_ID&s
 - In the address bar you will find a huge URL string similar to the one below. In place of `$ACCESSCODE` there will be a long string of characters. Note down that string for the next step.
 
 ```
-https://musing.vercel.app/callback?code=$ACCESSCODE
+https://example.com/?code=$ACCESSCODE
 ```
 
 #### Step 5: Get the refresh token
