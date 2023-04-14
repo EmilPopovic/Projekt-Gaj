@@ -17,7 +17,7 @@ class CommandButtons(discord.ui.View):
         success = await self.command_handler.shuffle(interaction, send_response=False)
         if success:
             guild_bot = self.bot.get_bot_from_interaction(interaction)
-            button.style = BtnStyle.green if guild_bot.is_shuffled else BtnStyle.grey
+            button.style = BtnStyle.green if guild_bot.queue.is_shuffled else BtnStyle.grey
             await interaction.response.edit_message(view=self)
 
     @discord.ui.button(label= '◁', style=BtnStyle.grey, row=0)
@@ -42,9 +42,9 @@ class CommandButtons(discord.ui.View):
         success = await self.command_handler.loop(interaction, send_response=False)
         if not success: return
         guild_bot = self.bot.get_bot_from_interaction(interaction)
-        if guild_bot.is_looped:
+        if guild_bot.queue.loop_status == 'queue':
             button.style = BtnStyle.green
-        elif guild_bot.is_looped_single:
+        elif guild_bot.queue.loop_status == 'single':
             button.style = BtnStyle.blue
         else:
             button.style = BtnStyle.grey
@@ -83,3 +83,6 @@ class CommandButtons(discord.ui.View):
         guild_bot = self.bot.get_bot_from_interaction(interaction)
         button.style = BtnStyle.green if guild_bot.show_history else BtnStyle.grey
         await interaction.response.edit_message(view=self)
+
+    async def add_to_personal(self, interaction: discord.Interaction, button: discord.ui.Button):
+        pass

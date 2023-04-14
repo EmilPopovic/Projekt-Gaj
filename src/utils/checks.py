@@ -34,7 +34,7 @@ class PermissionsCheck:
         return member
 
     @classmethod
-    def is_admin(cls, member):
+    def member_is_admin(cls, member):
         for role in member.roles:
             for permission in role.permissions:
                 if permission[0] == 'moderate_members' and permission[1]:
@@ -42,7 +42,11 @@ class PermissionsCheck:
         return False
 
     @classmethod
-    def is_dj(cls, member):
+    def interaction_is_admin(cls, interaction: discord.Interaction) -> bool:
+        return interaction.permissions.administrator
+
+    @classmethod
+    def member_is_dj(cls, member):
         for role in member.roles:
             if role.name == 'dj':
                 return True
@@ -50,9 +54,9 @@ class PermissionsCheck:
 
     @classmethod
     def member_has_permissions(cls, member):
-        return cls.is_admin(member) or cls.is_dj(member)
+        return cls.member_is_admin(member) or cls.member_is_dj(member)
 
     @classmethod
     def interaction_has_permissions(cls, interaction: discord.Interaction):
         member = cls.get_member(interaction)
-        return cls.member_has_permissions(member)
+        return cls.member_is_dj(member) or cls.interaction_is_admin(interaction)

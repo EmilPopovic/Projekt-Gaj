@@ -1,46 +1,11 @@
 import random
 import typing
 
-# from utils import Queue, Stack
-# from song_generator import SongGenerator
-
-# todo: remove test classes
-
-from collections import deque
+from utils import Queue, Stack
 
 import discord
 
 from .song_generator import SongGenerator
-
-
-class Queue(deque):
-    def __init__(self):
-        super().__init__()
-
-    def enqueue(self, r):
-        self.append(r)
-
-    def dequeue(self):
-        if not self.is_empty():
-            return self.popleft()
-
-    def is_empty(self):
-        return len(self) == 0
-
-
-class Stack(deque):
-    def __init__(self):
-        super().__init__()
-
-    def push(self, r):
-        self.append(r)
-
-    def pop(self):
-        if not self.is_empty():
-            return super().pop()
-
-    def is_empty(self):
-        return len(self) == 0
 
 
 class SongQueue:
@@ -192,8 +157,7 @@ class SongQueue:
 
         playlist_songs = await self.Manager.songs_from_playlist(interaction, playlist_name, scope, song_name)
 
-        song_objs: list[SongGenerator] = [SongGenerator(song, interaction) for song in playlist_songs]
-        self.extend_list(insert_place, song_objs)
+        self.extend_list(insert_place, playlist_songs)
 
     def extend_list(self, insert_place: int, songs: list[SongGenerator]):
         if insert_place == 1:
@@ -208,7 +172,7 @@ class SongQueue:
         if self.current is None:
             self.next()
 
-    def test_add(self, objects):
+    def __test_add(self, objects):
         for obj in objects:
             self.upcoming.enqueue(obj)
             if self.is_shuffled:

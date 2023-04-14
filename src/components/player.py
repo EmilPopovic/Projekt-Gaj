@@ -5,7 +5,7 @@ import threading
 import time
 from discord.ext import commands
 
-from .song_queue import SongQueue as Queue
+from .song_queue import SongQueue
 from utils import CommandExecutionError, FailedToConnectError
 from utils.colors import c_event, c_guild
 
@@ -24,7 +24,7 @@ class Player(commands.Cog):
         self.guild: discord.Guild = guild
         self.guild_bot = guild_bot
 
-        self.queue = Queue()
+        self.queue = SongQueue()
 
         self.looped_status: typing.Literal['none', 'queue', 'single'] = 'none'
         self.is_playing = False
@@ -56,7 +56,7 @@ class Player(commands.Cog):
             self.is_playing = False
             self.is_paused = False
 
-            self.queue = Queue()
+            self.queue = SongQueue()
 
             # todo: should we reset this?
             self.voice_client = None
@@ -64,7 +64,7 @@ class Player(commands.Cog):
 
             await self.guild_bot.reset()
 
-            await self.guild_bot.update_msg()
+            await self.guild_bot.update_message()
 
     async def shuffle_queue(self) -> None:
         async with self.lock:
@@ -73,7 +73,7 @@ class Player(commands.Cog):
             else:
                 self.queue.shuffle()
 
-            await self.guild_bot.update_msg()
+            await self.guild_bot.update_message()
 
     async def cycle_loop(self) -> None:
         async with self.lock:
@@ -84,13 +84,13 @@ class Player(commands.Cog):
             elif self.queue.loop_status == 'single':
                 self.queue.loop_status = 'none'
 
-            await self.guild_bot.update_msg()
+            await self.guild_bot.update_message()
 
     async def go_to_previous(self) -> None:
         async with self.lock:
             self.queue.previous()
 
-            await self.guild_bot.update_msg()
+            await self.guild_bot.update_message()
 
     async def pause(self) -> None:
         async with self.lock:
@@ -101,7 +101,7 @@ class Player(commands.Cog):
                 self.is_paused = True
                 self.voice_client.pause()
 
-            await self.guild_bot.update_msg()
+            await self.guild_bot.update_message()
 
     async def skip(self) -> None:
         async with self.lock:
@@ -113,7 +113,7 @@ class Player(commands.Cog):
             self.skip_event.set()
             self.stop_play_audio_thread()
 
-            await self.guild_bot.update_msg()
+            await self.guild_bot.update_message()
 
     async def previous(self) -> None:
         async with self.lock:
@@ -126,18 +126,18 @@ class Player(commands.Cog):
             self.previous_event.set()
             self.stop_play_audio_thread()
 
-            await self.guild_bot.update_msg()
+            await self.guild_bot.update_message()
 
     async def clear(self) -> None:
         async with self.lock:
-            self.queue = Queue()
+            self.queue = SongQueue()
 
             self.is_playing = False
             self.is_paused = False
 
             await self.guild_bot.reset()
 
-            await self.guild_bot.update_msg()
+            await self.guild_bot.update_message()
 
     async def disconnect(self, disconnect=True) -> None:
         async with self.lock:
@@ -146,7 +146,7 @@ class Player(commands.Cog):
             await self.reset_bot_states()
             await self.guild_bot.reset()
 
-            await self.guild_bot.update_msg()
+            await self.guild_bot.update_message()
 
     async def swap(self, i: int, j: int) -> None:
         async with self.lock:
@@ -156,7 +156,7 @@ class Player(commands.Cog):
                 error_msg = e.args[0]
                 raise CommandExecutionError(error_msg)
 
-            await self.guild_bot.update_msg()
+            await self.guild_bot.update_message()
 
     async def remove(self, i: int) -> None:
         async with self.lock:
@@ -166,7 +166,7 @@ class Player(commands.Cog):
                 error_msg = e.args[0]
                 raise CommandExecutionError(error_msg)
 
-            await self.guild_bot.update_msg()
+            await self.guild_bot.update_message()
 
     async def goto(self, i: int) -> None:
         async with self.lock:
@@ -179,7 +179,7 @@ class Player(commands.Cog):
             self.goto_event.set()
             self.stop_play_audio_thread()
 
-            await self.guild_bot.update_msg()
+            await self.guild_bot.update_message()
 
     # @await_update_message
     async def add(
@@ -203,6 +203,8 @@ class Player(commands.Cog):
             error_msg = e.args[0]
             raise CommandExecutionError(error_msg)
 
+        await self.guild_bot.update_message()
+
         if self.play_music_thread is None:
             self.start_session()
 
@@ -224,17 +226,26 @@ class Player(commands.Cog):
 
     def update_ui(self):
         loop = asyncio.new_event_loop()
-        loop.create_task(self.guild_bot.update_msg())
+        loop.create_task(self.guild_bot.update_message())
 
     # @await_update_message
     def start_session(self):
         self.play_music_thread = threading.Thread(target = self.play_music, args = ())
         self.play_music_thread.start()
+
+        self.is_playing = True
+
         print(f'{c_event("started session")} in {c_guild(self.guild.id)}')
 
     def close_session(self):
         self.is_playing = False
+
         self.play_music_thread = None
+        self.playing_thread = None
+
+        self.is_paused = False
+        self.queue = SongQueue()
+
         print(f'{c_event("closed session")} in {c_guild(self.guild.id)}')
 
     def play_music(self):
@@ -272,13 +283,8 @@ class Player(commands.Cog):
             audio_source = discord.FFmpegPCMAudio(song.source, **self.ffmpeg_options)
             try:
                 self.voice_client.play(audio_source)
-                self.is_playing = True
             except discord.ClientException:
                 continue
-
-            # todo: update message here
-            # coroutine = self.guild_bot.update_msg()
-            # task = self.update_message_loop.create_task(coroutine)
 
             self.playing_thread = threading.Thread(target = self._play_audio_thread(), args = ())
             self.playing_thread.start()

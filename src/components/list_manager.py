@@ -1,3 +1,5 @@
+import threading
+
 import discord
 import typing
 
@@ -38,6 +40,11 @@ class ListManager:
             return None
         return song
 
+    @staticmethod
+    def worker(lst, n, sql_song, interaction):
+        song = SongGenerator(sql_song, interaction)
+        lst[n] = song
+
     async def songs_from_playlist(
             self,
             interaction: discord.Interaction,
@@ -65,15 +72,22 @@ class ListManager:
             await Responder.send('Forbidden list name.', interaction, fail=True)
             return
         else:
-            song_objs: list[SongGenerator] = [SongGenerator(sql_song, interaction) for sql_song in list_songs]
+            if song_name:
+                list_songs = [song for song in list_songs if song.song_name == song_name]
 
-        ret_objects: list[SongGenerator]
-        if song_name:
-            ret_objects = [song for song in song_objs if song.name == song_name]
-        else:
-            ret_objects = [song for song in song_objs]
 
-        return ret_objects
+            song_objs = [None] * len(list_songs)
+            threads = []
+
+            for i, sql_song in enumerate(list_songs):
+                t = threading.Thread(target = self.worker, args = (song_objs, i, sql_song, interaction))
+                threads.append(t)
+                t.start()
+
+            for thread in threads:
+                thread.join()
+
+        return song_objs
 
     async def list_exists(
             self,
@@ -137,7 +151,7 @@ class ListManager:
         # get the SongGenerator object of the song we want to add
         songs: list[SongGenerator]
         if query:
-            songs = SongGenerator.get_songs(query, interaction, set_all=True)
+            songs = SongGenerator.get_songs(query, interaction, from_add_to_playlist = True)
         else:
             songs = [self.get_current_song(interaction)]
             if songs[0] is None:

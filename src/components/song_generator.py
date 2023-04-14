@@ -16,13 +16,23 @@ class SongGenerator:
     db = None
 
     @staticmethod
-    def get_songs(query: str, interaction: discord.Interaction, set_all: bool = False) -> list:
+    def get_songs(
+            query: str,
+            interaction: discord.Interaction,
+            set_all: bool = False,
+            from_add_to_playlist: bool = False
+    ) -> list:
         if 'https://open.spotify.com/' in query:
-            lst = [SongGenerator(song, interaction, set_all) for song in SpotifyInfo.spotify_get(query)]
+            lst = [
+                SongGenerator(song, interaction, set_all, from_add_to_playlist)
+                for song in SpotifyInfo.spotify_get(query)
+            ]
         elif 'cdn.discordapp.com' in query:
-            lst = [SongGenerator(query, interaction, set_all)]
+            lst = [SongGenerator(query, interaction, set_all, from_add_to_playlist)]
         else:
-            lst = [SongGenerator(SpotifyInfo.spotify_get(query)[0], interaction)]
+            lst = [
+                SongGenerator(SpotifyInfo.spotify_get(query)[0], interaction, from_add_to_playlist=from_add_to_playlist)
+            ]
 
         return [song for song in lst if song.is_good]
 
@@ -30,7 +40,9 @@ class SongGenerator:
             self,
             query: str | SpotifySong | SqlSong,
             interaction: discord.Interaction,
-            set_all: bool = True):
+            set_all: bool = True,
+            from_add_to_playlist: bool = False
+    ):
         self.query = query
         self.interaction = interaction
         self.error = None
@@ -79,19 +91,28 @@ class SongGenerator:
 
         elif isinstance(query, SpotifySong):
             self.set_spotify_secondary(query)
+            if from_add_to_playlist:
+                self.set_source()
 
         elif isinstance(query, SqlSong):
-            # todo: test this
             self.from_playlist = True
             self.name = query.song_name
+
             spotify_info: SpotifySong = SpotifyInfo.spotify_get(f'{self.name} - {query.author_name}')[0]
+
             self.authors = spotify_info.authors
             self.author = self.authors[0]
+
             self.duration = spotify_info.duration
             self.thumbnail_link = spotify_info.thumbnail_url
             self.spotify_link = spotify_info.url
-            self.set_source_color_lyrics()
+
             self.source = query.source
+            print(self.source)
+            if self.source is None:
+                self.is_good = False
+
+            self.set_source_color_lyrics()
 
     def set_spotify_info(self, query: str) -> bool | None:
         try:
@@ -151,12 +172,11 @@ class SongGenerator:
         if self.thumbnail_link is None:
             return
 
-        # get image from url
         response = get(self.thumbnail_link)
         img = BytesIO(response.content)
-        # convert image to ColorThief object
+
         color_thief = ColorThief(img)
-        # extract color palette from image
+
         palette = color_thief.get_palette(color_count=5)
         self.color = palette[0]
 
@@ -201,6 +221,9 @@ class SongGenerator:
 
     def __lt__(self, other) -> bool:
         return self.uid < other.uid
+
+    def __hash__(self):
+        return hash(self.uid)
 
     def __repr__(self) -> str:
         return f'SongGenerator object | name: {self.name} | url: {self.spotify_link}'

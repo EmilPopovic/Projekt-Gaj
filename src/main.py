@@ -17,6 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import sys
 import discord
+import asyncio
 from typing import Literal
 from discord import app_commands
 from discord.ext import commands
@@ -192,9 +193,11 @@ class MainBot(commands.AutoShardedBot):
             await self.Manager.add_to_playlist(interaction, playlist, song, 'user')
 
         @self.tree.command(name='server-add', description='Add currently playing song to server playlist.')
+        @app_commands.describe(
+            playlist= 'The playlist the song will be added to.',
+            song='The song or third party playlist you want to add to the server playlist.'
+        )
         @app_commands.check(PermissionsCheck.interaction_has_permissions)
-        @app_commands.describe(playlist= 'The playlist the song will be added to.',
-                               song='The song or third party playlist you want to add to the server playlist.')
         async def server_add_callback(interaction: discord.Interaction,
                                       playlist: str,
                                       song: str = ''):
@@ -281,7 +284,10 @@ class MainBot(commands.AutoShardedBot):
 
         @server_create_callback.error
         @server_add_callback.error
+        @server_delete_callback.error
+        @server_obliterate_callback.error
         async def server_add_callback_error(interaction: discord.Interaction, _):
+            print(_)
             msg = 'You don\'t seem to be an admin or a dj, so you cant use this command.'
             await Responder.send(msg, interaction, fail=True)
 
@@ -395,13 +401,13 @@ class MainBot(commands.AutoShardedBot):
 
             if before.channel and not after.channel:
                 print(f'{c_event("DISCONNECTED")} in {c_guild(guild_id)}')
-                await guild_bot.dc(disconnect=False)
+                await guild_bot.disconnect(disconnect=False)
             elif not before.channel and after.channel:
                 print(f'{c_event("CONNECTED")} in {c_guild(guild_id)}')
                 pass
             else:
                 print(f'{c_event("MOVED")} in {c_guild(guild_id)}')
-                await guild_bot.dc(disconnect=False)
+                await guild_bot.disconnect(disconnect=False)
 
         @self.event
         async def on_message(message) -> None:
@@ -441,6 +447,15 @@ class MainBot(commands.AutoShardedBot):
             self.guild_bots[guild.id] = await GuildBot(guild)
 
         print(f'{c_login()} as {self.user} with user id: {c_user(self.user.id)}')
+
+        await self.check_for_update_request()
+
+    async def check_for_update_request(self) -> None:
+        while True:
+            await asyncio.sleep(1)
+
+            for player in self.guild_bots.values():
+                await player.guild_bot.update_message()
 
     def get_bot_from_interaction(self, interaction: discord.Interaction) -> GuildBot:
         return self.guild_bots[interaction.guild.id]

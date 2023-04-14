@@ -241,7 +241,7 @@ class CommandHandler:
         guild_bot = self.bot.get_bot_from_interaction(interaction)
         success = await self.__execute(
             guild_bot,
-            guild_bot.loop,
+            guild_bot.cycle_loop,
             'Loop toggled.',
             interaction,
             send_response
@@ -263,7 +263,7 @@ class CommandHandler:
         guild_bot = self.bot.get_bot_from_interaction(interaction)
         success = await self.__execute(
             guild_bot,
-            guild_bot.dc,
+            guild_bot.disconnect,
             'Bot disconnected.',
             interaction,
             send_response
@@ -318,7 +318,7 @@ class CommandHandler:
         guild_bot = self.bot.get_bot_from_interaction(interaction)
         success = await self.__execute(
             guild_bot,
-            guild_bot.shuffle,
+            guild_bot.shuffle_queue,
             'Shuffle toggled.',
             interaction,
             send_response
