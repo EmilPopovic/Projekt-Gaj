@@ -24,11 +24,13 @@ class SongGenerator:
     ) -> list:
         if 'https://open.spotify.com/' in query:
             lst = [
-                SongGenerator(song, interaction, set_all, from_add_to_playlist)
+                SongGenerator(song, interaction, set_all, from_add_to_playlist=from_add_to_playlist)
                 for song in SpotifyInfo.spotify_get(query)
             ]
         elif 'cdn.discordapp.com' in query:
-            lst = [SongGenerator(query, interaction, set_all, from_add_to_playlist)]
+            lst = [SongGenerator(query, interaction, set_all, from_add_to_playlist=from_add_to_playlist)]
+        elif 'www.youtube.com' in query and 'playlist' not in query:
+            lst = [SongGenerator(query, interaction, from_add_to_playlist=from_add_to_playlist)]
         else:
             lst = [
                 SongGenerator(SpotifyInfo.spotify_get(query)[0], interaction, from_add_to_playlist=from_add_to_playlist)
@@ -70,16 +72,27 @@ class SongGenerator:
         self.from_playlist: bool = False
 
         if isinstance(query, str):
-            if 'www.youtube.com' in query:
-                # TODO: if song is YouTube link
-                self.is_good = False
-                return
-            if 'cdn.discordapp.com' in query:
+            if 'www.youtube.com' in query and 'playlist' not in query:
+                print('we are searching for a youtube song')
+
+                yt_info = YouTubeInfo(query, url=True)
+
+                self.source = yt_info.source
+                self.yt_id = yt_info.id
+                self.yt_link = f'https://www.youtube.com/watch?v={self.yt_id}'
+
+                yt_author_name = yt_info.author_name
+                yt_title = yt_info.title
+
+                self.set_spotify_info(f'{yt_author_name} - {yt_title}')
+
+            elif 'cdn.discordapp.com' in query:
                 self.from_file = True
                 self.source = query
                 self.name = query.split('/')[-1].split('.')[0].replace('_', ' ')
                 self.author = Author()
                 return
+
             else:
                 self.set_spotify_info(query)
 
