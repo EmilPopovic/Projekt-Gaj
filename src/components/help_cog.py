@@ -13,8 +13,6 @@ class HelpCog:
         ('/loop', 'Toggles between looping queue, looping a single song and not looping.'),
         ('/clear', 'Removes all songs from the queue and stops playing.'),
         ('/dc', 'Disconnects the bot from voice channel and clears the queue.'),
-        ('/queue', 'Toggles short queue display (only the next five songs).'),
-        ('/history', 'Toggles history display (already played songs).'),
         ('/lyrics', 'Toggles song lyrics.'),
         ('/shuffle', 'Shuffles or unshuffles queue.'),
         ('/swap', 'Swaps the places of two song in the queue.'),
@@ -35,7 +33,7 @@ class HelpCog:
         ('⯅', 'Toggle history display (already played songs).')
     ]
 
-    github_link = '<github-link>'
+    github_link = 'https://github.com/Mjolnir2425/Shteff'
     description = f'Shteff is a free and open source music bot. Source code is available at {github_link}.'
 
     @classmethod
