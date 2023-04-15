@@ -2,9 +2,13 @@
 
 Shteff is a Discord bot that allows users to play music in a voice channel and manage playlist straight from Discord using various commands. The bot uses the Spotify API to gather information about songs as well as the Discord.py library to interact with the Discord API, the yt-dlp library to stream audio from YouTube and the lyricsgenius library to get the lyrics of songs. The database is handled by MySQL.
 
+<!--
+
 ## Getting Started
 
 Invite Shteff using [this link](https://discord.com/api/oauth2/authorize?client_id=1074271481674080296&permissions=8&scope=bot), select a server and approve all permissions. Enjoy!
+
+-->
 
 ## Self Hosting
 
@@ -16,11 +20,31 @@ To use this bot, you'll need to install all of the requirements from requirement
 pip install library-name
 ```
 
-You will also need ffmpeg. You can get ffmpeg [here](https://www.gyan.dev/ffmpeg/builds/).
+You will also need ffmpeg.
+
+### Setting up FFmpeg
+
+#### Step 1: Download FFmpeg
+
+- You can get ffmpeg [here](https://www.gyan.dev/ffmpeg/builds/).
+- Download the latest git master branch build (ending in `.7z`).
+- Extract the downloaded zip to `C:\\ffmpeg`.
+
+#### Step 2: Add FFmpeg to PATH
+
+- In your Windows search bar, start typing "Edit system environment variables" and open it.
+- In the bottom right corner click on "Environment Variables...".
+- In the "System variables" menu double click on "Path".
+- Click on "New" and write `C:\ffmpeg\bin`.
+- Click "OK" on all windows.
 
 ### Creating a Discord bot client
 
+### Creating a database
+
 ### Setting up a Spotify app
+
+If you want to do this on your own, you will need to note down your `refresh_token` and the `base64_encoded_string`.
 
 A step by step guide is provided below, but you can always use the Spotify for Developers Web API [documentation](https://developer.spotify.com/documentation/web-api/tutorials/getting-started) for more information or clarification.
 
@@ -114,6 +138,10 @@ You can interact with Shteff in two ways:
 - Interactive buttons
 - Slash commands
 
+You can add songs using one of four commands: `/play`, `/file-play`, `/playlist` or `/server-playlist`. When the first song is added to the queue, a new session is started. The song queue only persistst while a session is active. A session is closed by using `/clear`, `/dc` or the corresponding buttons.
+
+If you like a song, you can save it to an existing playlist or create a new one. Playlists do not depend on session as they are stored in a database. You do not need to log in to use playlists and Shteff does not collect any user data except for the Discord User ID which is public and can be accessed by anyone. Your playlists are only accessible when logged into Disocrd. Server playlists are only available in the specific Discord server.
+
 ## The Buttons
 
 The button block is located under the command message and looks like this. You can find what every command means in the list of supported commands below.
@@ -196,6 +224,8 @@ The command message consists of three parts:
      - The button block is already described [here](README.md#the-buttons).
 
 # Contributing
+
+Contributions are welcome! If you find a bug or have an idea for a new feature, feel free to open an issue or submit a pull request.
 
 # License
 
