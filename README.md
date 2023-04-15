@@ -67,6 +67,39 @@ You will also need ffmpeg.
 
 - Follow this [guide](https://www.w3schools.com/mysql/mysql_install_windows.asp) to install MySQL.
 
+#### Step 2: Setup a database
+
+- When you've successfully set up your MySQL Workbench, you should run the following queries in your Workbench:
+```
+CREATE DATABASE Shteff;
+USE Shteff;
+
+CREATE TABLE Guilds(
+guild_id BIGINT PRIMARY KEY,
+channel_id BIGINT NOT NULL
+);
+
+CREATE TABLE ServerPlaylists(
+guild_id BIGINT NOT NULL,
+playlist_name VARCHAR(30) NOT NULL,
+PRIMARY KEY(guild_id, playlist_name)
+);
+
+CREATE TABLE PersonalPlaylists(
+user_id BIGINT NOT NULL,
+playlist_name VARCHAR(30) NOT NULL,
+PRIMARY KEY(user_id, playlist_name)
+);
+
+Create Table Songs(
+song_id INT NOT NULL PRIMARY KEY auto_increment,
+song_name VARCHAR(150) NOT NULL,
+author_name VARCHAR(150) NOT NULL,
+song_link VARCHAR(2000) NOT NULL
+);
+```
+- After running this script, you should have Shteff's database set up! Make sure your MySQL server is running while Shteff is operational, otherwise several functionalities may be unavailable.
+
 ### Setting up a Spotify app
 
 If you want to do this on your own, you will need to note down your `refresh_token` and the `base64_encoded_string`.
@@ -77,7 +110,7 @@ A step by step guide is provided below, but you can always use the Spotify for D
 
 - Go to [Spotify developers dashboard](https://developer.spotify.com/dashboard).
 - Then select or create your app.
-- Note down your Client ID and Client Secret in a convenient lacation to use in the next steps.
+- Note down your Client ID and Client Secret in a convenient location to use in the next steps.
 
 #### Step 2: Add `Redirect URIs` to your Spotify app
 
@@ -132,9 +165,9 @@ $CLIENT_ID:$CLIENT_SECRET
 
 ### Setting up the Genius API
 
-First you'll need to sign up for a (free) account that authorizes access to the [Genius API](http://genius.com/api-clients). After signing up/logging in to your account, head out to the API section on Genius and [create a new API client](https://genius.com/api-clients/new). After creating your client, you can generate an access token to use with the library. Genius provides two kinds of tokens: `client access token` and `user token`. You will need the first one.
+First you'll need to sign up for a (free) account that authorizes access to the [Genius API](http://genius.com/api-clients). After signing up/logging in to your account, head to the API section on Genius and [create a new API client](https://genius.com/api-clients/new). After creating your client, you can generate an access token to use with the library. Genius provides two kinds of tokens: `client access token` and `user token`. You will need the first one.
 
-They don't need a user to authenticate their use and you can easily get yours by visiting the [API Clients](https://genius.com/api-clients) page and click on "Generate Access Token". This will give you an access token, and now you're good to go.
+Genius doesn't require user authentication and you can easily get your token by visiting the [API Clients](https://genius.com/api-clients) page and click on "Generate Access Token". This will give you an access token, and now you're good to go.
 
 ### Setting up the `.env` file
 
@@ -167,9 +200,9 @@ You can interact with Shteff in two ways:
 - Interactive buttons
 - Slash commands
 
-You can add songs using one of four commands: `/play`, `/file-play`, `/playlist` or `/server-playlist`. When the first song is added to the queue, a new session is started. The song queue only persistst while a session is active. A session is closed by using `/clear`, `/dc` or the corresponding buttons.
+You can add songs using one of four commands: `/play`, `/file-play`, `/playlist` or `/server-playlist`. When the first song is added to the queue, a new session is started. The song queue only persists while a session is active. A session is closed by using `/clear`, `/dc` or the corresponding buttons.
 
-If you like a song, you can save it to an existing playlist or create a new one. Playlists do not depend on session as they are stored in a database. You do not need to log in to use playlists and Shteff does not collect any user data except for the Discord User ID which is public and can be accessed by anyone. Your playlists are only accessible when logged into Disocrd. Server playlists are only available in the specific Discord server.
+If you like a song, you can save it to an existing playlist or create a new one. Playlists do not depend on session as they are stored in a database. You do not need to log in to use playlists and Shteff does not collect any user data except for the Discord User ID which is public and can be accessed by anyone. Your playlists are only accessible when logged into Discord. Server playlists are only available in the specific Discord server.
 
 ## The Buttons
 
@@ -198,7 +231,7 @@ Only server Administrators and users with a role named `dj` can execute commands
 | `/help` | Shows you a help message similar to this table |||
 | `/ping` | Pings Shteff and displays the latency. |||
 | `/join` | Makes the bot join to your voice channel. |||
-|`/play` | The command you will be using most often. Connects the bot to your voice channel and starts playing whatever you asked it to. Shteff currently supports directly searching for songs by name, any Spotify link, and youtube.com links. | `song`, `place`* | `song` is the search parameter by which Shteff will find the song(s) you are looking for. `place` will insert the song(s) at that place in the queue. You can see the queue in the command message located in the shteffs-disco text channel. `place` has to be in queue and greater than 0. |
+|`/play` | The command you will be using most often. Connects the bot to your voice channel and starts playing whatever you asked it to. Shteff currently supports directly searching for songs by name, any Spotify link, and youtube.com links. | `song`, `place`* | `song` is the search parameter by which Shteff will find the song(s) you are looking for. `place` will insert the song(s) at that position in the queue. You can see the queue in the command message located in the shteffs-disco text channel. `place` has to be in queue and greater than 0. |
 | `/file-play` | You can add your own files to add to your queue. The supported file formats are: `mp4` , `mp3`, `flac`, `m4a`, `wav`, `wma`, `aac` | `file`, `place`* | Insert your file into the `file` parameter. `place` works the same as in `/play` |
 | `/skip` | Skips the currently playing song. If a single song is looped, the next song is played and loop is set to loop the entire queue. |||
 | `/loop` | Cycles the loop state in the following order: no looping, looping the entire queue, looping a single song. |||
@@ -209,16 +242,16 @@ Only server Administrators and users with a role named `dj` can execute commands
 | `/shuffle` | Toggles the shuffling of the list. Songs skipped while shuffled will not appear in the queue after unshuffling. |||
 | `/swap` | Swaps the songs with the specified places in the queue. | `first`, `second` | Places of the songs you want to swap places. `first` does not have to be less than `second`. Both parameters have to be greater than 0. |
 | `/pause` | Toggles the pausing of the player. |||
-| `/remove` | Removes the song in the specified place from the queue. | `place` | `place` is the place of the song you want removed from the queue. The parameter has to be greater than 0. |
-| `/goto` | Moves the player to the specified place in the queue. All the skipped songs will still appear in the history. | `place` | `place` is the place of the song you want to go to. The parameter has to be greater than 0. |
+| `/remove` | Removes the song in the specified place from the queue. | `place` | `place` is the position of the song you want removed from the queue. The parameter has to be greater than 0. |
+| `/goto` | Moves the player to the specified position in the queue. All the skipped songs will still appear in the history. | `place` | `place` is the position of the song you want to go to. The parameter has to be greater than 0. |
 | `/create` | Creates a new personal playlist which only you will be able to access. | `playlist` | The parameter describes the name of your new playlist. |
 | `/server-create`** | Creates a new server playlist which everyone on the server will be able to access. | `playlist` | The parameter describes the name of your new playlist. |
 | `/delete` | Deletes the playlist from your list of playlists. | `playlist` | The parameter describes the name of the playlist being deleted. |
 | `/server-delete`** | Deletes the playlist from the server's list of playlists. | `playlist` | The parameter describes the name of the playlist being deleted. |
-| `/add` | Adds a song to the specified playlist. | `playlist`, `song`* | The parameter describes the name of the playlist where the song(s) will be added to. If `song` is not given, the currently playling song is added to the playlist. `song` supports all formats as in the `/play` command. |
+| `/add` | Adds a song to the specified playlist. | `playlist`, `song`* | The parameter describes the name of the playlist where the song(s) will be added to. If `song` is not given, the currently playing song is added to the playlist. `song` supports all formats as in the `/play` command. |
 | `/server-add`** | Works the same as `/add` but for server playlists. | `playlist`, `song`* | The parameters work the same as in `/add`. |
-| `/obliterate` | Removes the specified song from a personal playlist. | `playlist`, `song` | Names of the song and the playlist wanted. |
-| `/server-obliterate`** | Removes the specified song from a server playlist. | `playlist`, `song` | Names of the song and the playlist wanted. |
+| `/obliterate` | Removes the specified song from a personal playlist. | `playlist`, `song` | Names of the playlist and the song wanted. |
+| `/server-obliterate`** | Removes the specified song from a server playlist. | `playlist`, `song` | Names of the playlist and the song wanted. |
 | `/catalogue` | Lists out all your personal playlists. |||
 | `/server-catalogue` | Lists out all playlists in a server. |||
 | `/manifest` | Lists out all songs on a personal playlist. | `playlist` | The name of the playlist. |
@@ -228,7 +261,7 @@ Only server Administrators and users with a role named `dj` can execute commands
 
 ## The Command Message
 
-The command message should look something like this. It will be located in the `shteffs-disco` text channel which Shteff will create on it's own.
+The command message should look something like this. It will be located in the `shteffs-disco` text channel which Shteff will create on his own.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://user-images.githubusercontent.com/104315710/232210368-cddebad3-6807-4ef4-ae83-87159c8f96dd.png">
