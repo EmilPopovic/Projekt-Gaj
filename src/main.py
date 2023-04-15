@@ -132,8 +132,8 @@ class MainBot(commands.AutoShardedBot):
 
         @self.tree.command(name='swap', description='Swap places of queued songs.')
         @app_commands.describe(
-            first='Index of song you want to swap with second.',
-            second='Index of song you want to swap with first.'
+            first='Position of song you want to swap with second.',
+            second='Position of song you want to swap with first.'
         )
         async def swap_callback(interaction: discord.Interaction, first: int, second: int):
             await self.Handler.swap(interaction, first, second)
@@ -142,13 +142,13 @@ class MainBot(commands.AutoShardedBot):
         async def pause_callback(interaction: discord.Interaction):
             await self.Handler.pause(interaction)
 
-        # todo: add describe to the following two commands
-
         @self.tree.command(name='remove', description='Removes song with given index from the queue.')
+        @app_commands.describe(place='Position of the song to remove.')
         async def remove_callback(interaction: discord.Interaction, place: int):
             await self.Handler.remove(interaction, place)
 
         @self.tree.command(name='goto', description='Jumps to the song with given index, removes skipped songs.')
+        @app_commands.describe(place = 'Position of the song to go to.')
         async def goto_callback(interaction: discord.Interaction, place: int):
             await self.Handler.goto(interaction, place)
 
@@ -277,7 +277,6 @@ class MainBot(commands.AutoShardedBot):
         @server_delete_callback.error
         @server_obliterate_callback.error
         async def no_permission_error(interaction: discord.Interaction, _):
-            print(_)
             msg = 'You don\'t seem to be an admin or a dj, so you cant use this command.'
             await Responder.send(msg, interaction, fail=True)
 
@@ -420,6 +419,7 @@ class MainBot(commands.AutoShardedBot):
         Runs on bot login.
         Syncs slash commands.
         Creates GuildBot objects for every guild.
+        Starts the listener for message update requests.
         """
         # sync commands
         print(f'{c_event("SYNCING COMMANDS")}')
@@ -459,6 +459,10 @@ class MainBot(commands.AutoShardedBot):
 
 if __name__ == '__main__':
     """Main is the beginning of everything."""
-    database = Database()
+    try:
+        database = Database()
+    except SqlException:
+        database = None
+
     bot = MainBot()
     bot.run(TOKEN)

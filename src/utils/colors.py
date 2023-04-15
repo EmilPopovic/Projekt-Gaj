@@ -3,9 +3,6 @@ import colorama
 from datetime import datetime
 
 
-# todo: replace with the logging module
-
-
 colorama.init(autoreset=True)
 
 

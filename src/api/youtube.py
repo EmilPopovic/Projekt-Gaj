@@ -1,4 +1,5 @@
 import yt_dlp
+
 from utils import YTDLError
 
 
@@ -57,6 +58,7 @@ class YouTubeInfo:
 
     @classmethod
     def search_yt_by_url(cls, url: str) -> tuple[str, str, str, str]:
+
         with yt_dlp.YoutubeDL(cls.ydl_options) as ydl:
             try:
                 video = ydl.extract_info(url, download = False)

@@ -1,4 +1,5 @@
 import discord
+
 from .sql_bridge import SqlSong
 
 

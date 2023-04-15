@@ -39,6 +39,7 @@ class Player(commands.Cog):
         self.previous_event = threading.Event()
         self.skip_event = threading.Event()
 
+        self.needs_refreshing = False
 
         self.playing_thread: threading.Thread | None = None
         self.stop_event = threading.Event()
@@ -46,21 +47,19 @@ class Player(commands.Cog):
 
         self.update_message_loop = asyncio.new_event_loop()
 
-    async def connect(self) -> None:
+    async def reset_bot_states(self, reset_vc=True) -> None:
         async with self.lock:
-            await self.join()
+            self.close_session()
 
-    async def reset_bot_states(self) -> None:
-        async with self.lock:
             self.looped_status = 'none'
             self.is_playing = False
             self.is_paused = False
 
             self.queue = SongQueue()
 
-            # todo: should we reset this?
-            self.voice_client = None
-            self.voice_channel = None
+            if reset_vc:
+                self.voice_client = None
+                self.voice_channel = None
 
             await self.guild_bot.reset()
 
@@ -273,6 +272,8 @@ class Player(commands.Cog):
             is_first = False
 
             song = self.queue.current
+
+            self.needs_refreshing = True
 
             if song is None:
                 self.close_session()

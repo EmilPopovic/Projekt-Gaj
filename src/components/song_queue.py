@@ -1,11 +1,9 @@
 import random
 import typing
-
-from utils import Queue, Stack
-
 import discord
 
 from .song_generator import SongGenerator
+from utils import Queue, Stack
 
 
 class SongQueue:

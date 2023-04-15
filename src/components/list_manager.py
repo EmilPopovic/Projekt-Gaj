@@ -51,7 +51,23 @@ class ListManager:
             playlist_name: str,
             scope: typing.Literal['user', 'server'],
             song_name: str = ''
-    ) -> list[SongGenerator] | None:
+    ) -> list[SongGenerator | None] | None:
+        """
+        This asynchronous function returns a list of songs from a specified playlist.
+
+        Parameters:
+            interaction (discord.Interaction): The interaction from which the bot's current song is being retrieved.
+            playlist_name (str): The name of the playlist to check for existence.
+            scope ('user' or 'server'): Is the function called for a user or a server playlist.
+            song_name (str, optional): The name of the song to get from playlist. Returns the entire
+                                       playlist if not given.
+
+        Returns:
+            If `song_name` is given, the function returns a list containing the `SongGenerator` object of the song.
+            If `song_name` is not given, the function returns a list of `SongGenerator` objects of all songs
+            on that playlist.
+            If an error occurs during the function execution, the function returns None.
+        """
         list_exists: bool | None = await self.list_exists(interaction, playlist_name, scope)
         if list_exists is None:
             return
@@ -74,7 +90,6 @@ class ListManager:
         else:
             if song_name:
                 list_songs = [song for song in list_songs if song.song_name == song_name]
-
 
             song_objs = [None] * len(list_songs)
             threads = []

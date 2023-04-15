@@ -1,6 +1,4 @@
 from .colors import *
-# todo: log file?
-# todo: explain when every exception is raised
 
 
 class SqlException(Exception):
@@ -47,6 +45,5 @@ class YTDLError(Exception):
 class SpotifyExtractError(Exception):
     def __init__(self, err=None):
         if err:
-            # todo: prints error wrong
             code = err['error'] if 'error' in err.keys() else err['status']
             print(f'{c_err()} Spotify API error code {code}')

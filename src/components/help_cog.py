@@ -53,7 +53,7 @@ class HelpCog:
     @classmethod
     async def send_message(cls, interaction: discord.Interaction):
         embed = discord.Embed(
-            title='The F***ing Manual',
+            title='The Manual',
             description='Read it.',
             color=0xf1c40f
         )

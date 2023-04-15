@@ -49,6 +49,7 @@ class GuildBot(Player):
         self.show_lyrics = False
         self.short_queue = False
         self.show_history = False
+
         await self.update_message()
 
     def create_queue_message(self) -> str:
@@ -155,9 +156,15 @@ class GuildBot(Player):
 
                 self.lyrics_message = await self.command_channel.send(content = lyrics_msg_content)
             else:
-                await self.lyrics_message.edit(content = lyrics_msg_content)
+                try:
+                    await self.lyrics_message.edit(content = lyrics_msg_content)
+                except discord.errors.NotFound:
+                    self.lyrics_message = None
+                    await self.update_lyrics_message()
 
     async def update_message(self) -> None:
+        self.needs_refreshing = False
+
         if self.is_playing:
             content = self.create_queue_message()
             embed = self.create_embed()
@@ -216,7 +223,14 @@ class GuildBot(Player):
 
     @classmethod
     async def get_id(cls, guild: discord.guild.Guild) -> int:
-        channel_id = cls.db.get_channel_id(guild.id)
+        try:
+            channel_id = cls.db.get_channel_id(guild.id)
+        except SqlException:
+            print(f'{c_err()} INVALID DATABASE generating temporary channel')
+            channel_id = None
+        except AttributeError:
+            print(f'{c_err()} INVALID DATABASE generating temporary channel')
+            channel_id = None
 
         if channel_id is not None:
             # check if channel exists currently

@@ -6,8 +6,6 @@ from utils import SpotifyExtractError
 from settings import REFRESH_TOKEN, BASE_64
 
 
-# todo: maybe use spotipy???
-
 @dataclass
 class Author:
     def __init__(self, name: str = 'No author', url: str = 'https://example.com/'):
@@ -46,7 +44,6 @@ class SpotifySong:
 
 
 class SpotifyInfo:
-    # TODO: refresh token in regular intervals?
     spotify_token = ''
 
     @classmethod
@@ -124,7 +121,6 @@ class SpotifyInfo:
         data = cls.__get_response(query)
 
         try:
-            # todo: get `thumbnail_url`
             return [
                 SpotifySong(
                     name=item['name'],
@@ -136,7 +132,7 @@ class SpotifyInfo:
                         )
                         for author in item['artists']
                     ],
-                    thumbnail_url=None,
+                    thumbnail_url='https://example.com',
                     duration=timedelta(milliseconds=item['duration_ms'])
                 )
                 for item in data['items']

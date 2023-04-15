@@ -220,11 +220,10 @@ class SongGenerator:
         return f'{minutes}:{seconds:02}'
 
     def cmd_message_print(self, number: int, is_current=False) -> str:
-        msg = f'{number} {self.author.name} - {self.name}'
         if is_current:
-            return f'**{msg}**'
+            return f'**{number} {self.author.name} - {self.name}**'
         else:
-            return msg
+            return f'**{number}** {self.author.name} - {self.name}'
 
     def __eq__(self, other) -> bool:
         return self.uid == other.uid
