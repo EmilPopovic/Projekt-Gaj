@@ -1,5 +1,4 @@
 discord>=2.2.2
-DateTime>=4.4
 colorthief>=0.2.1
 requests>=2.28.1
 lyricsgenius>=3.0.1
@@ -9,3 +8,4 @@ mysql-connector-python>=8.0.31
 colorama>=0.4.6
 python-dotenv~=1.0.0
 PyNaCl>=1.5.0
+yt-dlp>=2023.2.17
