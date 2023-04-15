@@ -102,10 +102,6 @@ class MainBot(commands.AutoShardedBot):
             await self.Handler.join(interaction, send_response = False)
             await self.Handler.file_play(interaction, file, place)
 
-        @self.tree.command(name='connect', description='Connect Shteff to your voice channel.')
-        async def connect_callback(interaction: discord.Interaction):
-            await self.Handler.connect(interaction)
-
         @self.tree.command(name='skip', description='Skips to the next queued song.')
         async def skip_callback(interaction: discord.Interaction):
             await self.Handler.skip(interaction)
@@ -125,14 +121,6 @@ class MainBot(commands.AutoShardedBot):
         @self.tree.command(name='back', description='Skips current song and plays previous.')
         async def back_callback(interaction: discord.Interaction):
             await self.Handler.previous(interaction)
-
-        @self.tree.command(name='queue', description='Toggles queue display type (short/long).')
-        async def queue_callback(interaction: discord.Interaction):
-            await self.Handler.queue(interaction)
-
-        @self.tree.command(name='history', description='Toggles history display type (show/hide).')
-        async def history_callback(interaction: discord.Interaction):
-            await self.Handler.history(interaction)
 
         @self.tree.command(name='lyrics', description='Toggles lyrics display (show/hide).')
         async def lyrics_callback(interaction: discord.Interaction):
@@ -154,13 +142,15 @@ class MainBot(commands.AutoShardedBot):
         async def pause_callback(interaction: discord.Interaction):
             await self.Handler.pause(interaction)
 
+        # todo: add describe to the following two commands
+
         @self.tree.command(name='remove', description='Removes song with given index from the queue.')
-        async def remove_callback(interaction: discord.Interaction, number: int):
-            await self.Handler.remove(interaction, number)
+        async def remove_callback(interaction: discord.Interaction, place: int):
+            await self.Handler.remove(interaction, place)
 
         @self.tree.command(name='goto', description='Jumps to the song with given index, removes skipped songs.')
-        async def goto_callback(interaction: discord.Interaction, number: int):
-            await self.Handler.goto(interaction, number)
+        async def goto_callback(interaction: discord.Interaction, place: int):
+            await self.Handler.goto(interaction, place)
 
         @self.tree.command(name='create', description='Create a personal playlist.')
         @app_commands.describe(playlist= 'Name of the playlist.')
@@ -286,7 +276,7 @@ class MainBot(commands.AutoShardedBot):
         @server_add_callback.error
         @server_delete_callback.error
         @server_obliterate_callback.error
-        async def server_add_callback_error(interaction: discord.Interaction, _):
+        async def no_permission_error(interaction: discord.Interaction, _):
             print(_)
             msg = 'You don\'t seem to be an admin or a dj, so you cant use this command.'
             await Responder.send(msg, interaction, fail=True)

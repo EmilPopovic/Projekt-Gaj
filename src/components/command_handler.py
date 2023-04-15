@@ -188,18 +188,6 @@ class CommandHandler:
         )
         return success
 
-    async def connect(self, interaction: discord.Interaction, send_response=True):
-        guild_bot = self.bot.get_bot_from_interaction(interaction)
-        success = await self.__execute(
-            guild_bot,
-            guild_bot.connect,
-            'Bot connected to voice channel.',
-            interaction,
-            send_response,
-            has_to_be_connected = False
-        )
-        return success
-
     async def remove(self, interaction: discord.Interaction, number: int, send_response=True):
         guild_bot = self.bot.guild_bots[interaction.guild.id]
         args = (number,)
@@ -276,28 +264,6 @@ class CommandHandler:
             guild_bot,
             guild_bot.previous,
             'Went to previous song.',
-            interaction,
-            send_response
-        )
-        return success
-
-    async def queue(self, interaction: discord.Interaction, send_response=True):
-        guild_bot = self.bot.get_bot_from_interaction(interaction)
-        success = await self.__execute(
-            guild_bot,
-            guild_bot.toggle_queue,
-            'Display toggled.',
-            interaction,
-            send_response
-        )
-        return success
-
-    async def history(self, interaction: discord.Interaction, send_response=True):
-        guild_bot = self.bot.get_bot_from_interaction(interaction)
-        success = await self.__execute(
-            guild_bot,
-            guild_bot.toggle_history,
-            'Display toggled.',
             interaction,
             send_response
         )

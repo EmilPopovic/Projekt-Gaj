@@ -132,6 +132,9 @@ class Player(commands.Cog):
         async with self.lock:
             self.queue = SongQueue()
 
+            if self.voice_client is not None and self.voice_client.is_playing():
+                self.voice_client.stop()
+
             self.is_playing = False
             self.is_paused = False
 
@@ -141,6 +144,7 @@ class Player(commands.Cog):
 
     async def disconnect(self, disconnect=True) -> None:
         async with self.lock:
+            self.close_session()
             if disconnect:
                 asyncio.create_task(self.voice_client.disconnect())
             await self.reset_bot_states()
