@@ -10,7 +10,13 @@ Invite Shteff using [this link](https://discord.com/api/oauth2/authorize?client_
 
 ### Installing requirements
 
-To use this bot, you'll need to install all of the requirements from requirements.txt, as well as ffmpeg. You can get ffmpeg [here](https://www.gyan.dev/ffmpeg/builds/).
+To use this bot, you'll need to install all of the requirements from requirements.txt. You can use `pip` to install requirements.
+
+```
+pip install library-name
+```
+
+You will also need ffmpeg. You can get ffmpeg [here](https://www.gyan.dev/ffmpeg/builds/).
 
 ### Creating a Discord bot client
 
@@ -136,3 +142,17 @@ Only server Administrators and users with a role named `dj` can execute commands
 | `/goto` | Moves the player to the specified place in the queue. All the skipped songs will still appear in the history. | `place` | `place` is the place of the song you want to go to. The parameter has to be grater than 0. |
 | `/create` | Creates a new personal playlist which only you will be able to access. | `playlist` | The parameter describes the name of your new playlist. |
 | `/server-create`** | Creates a new server playlist which everyone on the server will be able to access. | `playlist` | The parameter describes the name of your new playlist. |
+| `/delete` | Deletes the playlist from your list of playlists. | `playlist` | The parameter describes the name of the playlist being deleted. |
+| `/server-delete`** | Deletes the playlist from the server's list of playlists. | `playlist` | The parameter describes the name of the playlist being deleted. |
+| `/add` | Adds a song to the specified playlist. | `playlist`, `song`* | The parameter describes the name of the playlist where the song(s) will be added to. If `song` is not given, the currently playling song is added to the playlist. `song` supports all formats as in the `/play` command. |
+| `/server-add`** | Works the same as `/add` but for server playlists. | `playlist`, `song`* | The parameters work the same as in `/add`. |
+| `/obliterate` | Removes the specified song from a personal playlist. | `playlist`, `song` | Names of the song and the playlist wanted. |
+| `/server-obliterate`** | Removes the specified song from a server playlist. | `playlist`, `song` | Names of the song and the playlist wanted. |
+| `/catalogue` | Lists out all your personal playlists. |||
+| `/server-catalogue` | Lists out all playlists in a server. |||
+| `/manifest` | Lists out all songs on a personal playlist. | `playlist` | The name of the playlist. |
+| `/server-manifest` | Lists out all songs on a server playlist. | `playlist` | The name of the playlist. |
+| `/playlist` | Adds your personal playlist to the queue. | `playlist`, `song`\*, `place`\* | `playlist` is the name of the playlist. If `song` is not given, the entire playlist will be added to the queue. If `song` is given, only the selected song will be added to the queue. `place` works the same as in `/play`. |
+| `/server-playlist` | Works the same as `/playlist` but for server playlists. | `playlist`, `song`\*, `place`\* | The parameters work the same as in `/playlist`. |
+
+
