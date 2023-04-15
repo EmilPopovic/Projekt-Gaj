@@ -58,7 +58,7 @@ You will also need ffmpeg.
 #### Step 2: Set Privileged Gateway Intents
 
 - Go to the `Bot` tab in your application.
-- Scroll down unitl you see the `Priviliged Gateway Intents` section.
+- Scroll down until you see the `Priviliged Gateway Intents` section.
 - Enabe `SERVER MEMBERS INTENT`.
 
 ### Creating a database
