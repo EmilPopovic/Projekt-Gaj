@@ -6,7 +6,7 @@ Shteff is a Discord bot that allows users to play music in a voice channel and m
 
 ## Getting Started
 
-Invite Shteff using [this link](https://discord.com/api/oauth2/authorize?client_id=1074271481674080296&permissions=8&scope=bot), select a server and approve all permissions. Enjoy!
+Invite Shteff using this [link](https://example.com), select a server and approve all permissions. Enjoy!
 
 -->
 
@@ -14,7 +14,9 @@ Invite Shteff using [this link](https://discord.com/api/oauth2/authorize?client_
 
 ### Installing requirements
 
-To use this bot, you'll need to install all of the requirements from requirements.txt. You can use `pip` to install requirements.
+Shteff requires `python 3.7` or greater.
+
+To use this bot, you'll need to install all of the requirements from requirements.txt. You can use `pip` in your terminal to install requirements.
 
 ```
 pip install library-name
@@ -28,19 +30,42 @@ You will also need ffmpeg.
 
 - You can get ffmpeg [here](https://www.gyan.dev/ffmpeg/builds/).
 - Download the latest git master branch build (ending in `.7z`).
-- Extract the downloaded zip to `C:\\ffmpeg`.
+- Extract the downloaded zip to `C:\ffmpeg`.
 
 #### Step 2: Add FFmpeg to PATH
 
 - In your Windows search bar, start typing "Edit system environment variables" and open it.
 - In the bottom right corner click on "Environment Variables...".
 - In the "System variables" menu double click on "Path".
-- Click on "New" and write `C:\ffmpeg\bin`.
+- Click on "New" and enter `C:\ffmpeg\bin`.
 - Click "OK" on all windows.
 
-### Creating a Discord bot client
+### Setting up a Discord bot client
+
+#### Step 1: Create a Discord bot
+
+- Follow the step by step guide in the [Discord.py documentation](https://discordpy.readthedocs.io/en/stable/discord.html).
+- When selecting scopes, the following are needed:
+    - bot
+    - applications.commands
+- When selecting bot permissions, the following are needed:
+    - Read Messages/View Channels
+    - Send Messages
+    - Manage Messages
+    - Connect
+    - Speak
+
+#### Step 2: Set Privileged Gateway Intents
+
+- Go to the `Bot` tab in your application.
+- Scroll down unitl you see the `Priviliged Gateway Intents` section.
+- Enabe `SERVER MEMBERS INTENT`.
 
 ### Creating a database
+
+#### Step 1: Download MySQL
+
+- Follow this [guide](https://www.w3schools.com/mysql/mysql_install_windows.asp) to install MySQL.
 
 ### Setting up a Spotify app
 
@@ -106,6 +131,10 @@ $CLIENT_ID:$CLIENT_SECRET
 - Note down the Base64 encoded string as you will need it later.
 
 ### Setting up the Genius API
+
+First you'll need to sign up for a (free) account that authorizes access to the [Genius API](http://genius.com/api-clients). After signing up/logging in to your account, head out to the API section on Genius and [create a new API client](https://genius.com/api-clients/new). After creating your client, you can generate an access token to use with the library. Genius provides two kinds of tokens: `client access token` and `user token`. You will need the first one.
+
+They don't need a user to authenticate their use and you can easily get yours by visiting the [API Clients](https://genius.com/api-clients) page and click on "Generate Access Token". This will give you an access token, and now you're good to go.
 
 ### Setting up the `.env` file
 
@@ -225,7 +254,7 @@ The command message consists of three parts:
 
 # Contributing
 
-Contributions are welcome! If you find a bug or have an idea for a new feature, feel free to open an issue or submit a pull request.
+Contributions are welcome! If you find a bug or have an idea for a new feature, feel free to open an issue or submit a pull request. If you have any questions, you can reach out to the original creators of the bot on Discord (Mjolnir#6243 and OvajStup#7133).
 
 # License
 
