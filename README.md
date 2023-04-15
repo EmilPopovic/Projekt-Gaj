@@ -1,6 +1,6 @@
 # Shteff - a Discord Music Bot
 
-Shteff is a Discord bot that allows users to play music in a voice channel and manage playlist straight from Discord using various commands. The bot use the Discord.py library to interact with the Discord API, the yt-dlp library to stream audio from YouTube and the lyricsgenius library to get the lyrics of songs. The database is handled by MySQL.
+Shteff is a Discord bot that allows users to play music in a voice channel and manage playlist straight from Discord using various commands. The bot uses the Spotify API to gather information about songs as well as the Discord.py library to interact with the Discord API, the yt-dlp library to stream audio from YouTube and the lyricsgenius library to get the lyrics of songs. The database is handled by MySQL.
 
 ## Getting Started
 
@@ -111,8 +111,22 @@ The bot should now be online and ready to use!
 # Usage
 
 You can interact with Shteff in two ways:
-- Slash commands
 - Interactive buttons
+- Slash commands
+
+## The Buttons
+
+The button block is located under the command message and looks like this. You can find what every command means in the list of supported commands below.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://user-images.githubusercontent.com/104315710/232208387-c68179f4-fee6-4315-8067-b0ed83857043.png">
+  <source media="(prefers-color-scheme: light)" srcset="https://user-images.githubusercontent.com/104315710/232213343-60c5c0b8-6c68-43e7-9248-c00a4cba871f.png">
+  <img alt="Screenshot of button block" src="https://user-images.githubusercontent.com/104315710/232213343-60c5c0b8-6c68-43e7-9248-c00a4cba871f.png">
+</picture>
+
+| Shuffle | Back | Pause | Skip | Loop |
+| :---: | :---: | :---: | :---: | :---: |
+| **Clear** | **Disconnect** | **Lyrics** | **X** | **X** |
 
 ## The Commands
 
@@ -127,7 +141,7 @@ Only server Administrators and users with a role named `dj` can execute commands
 | `/help` | Shows you a help message similar to this table |||
 | `/ping` | Pings Shteff and displays the latency. |||
 | `/join` | Makes the bot join to your voice channel. |||
-|`/play` | The command you will be using most often. Connects the bot to your voice channel and starts playing whatever you asked it to. Shteff currently supports directly searching for songs by name, any Spotify link, and youtube.com links. | `song`, `place`* | `song` is the search parameter by which Shteff will find the song(s) you are looking for. `place` will insert the song(s) at that place in the queue. You can see the queue in the command message located in the shteffs-disco text channel. `place` has to be in queue and grater than 0. |
+|`/play` | The command you will be using most often. Connects the bot to your voice channel and starts playing whatever you asked it to. Shteff currently supports directly searching for songs by name, any Spotify link, and youtube.com links. | `song`, `place`* | `song` is the search parameter by which Shteff will find the song(s) you are looking for. `place` will insert the song(s) at that place in the queue. You can see the queue in the command message located in the shteffs-disco text channel. `place` has to be in queue and greater than 0. |
 | `/file-play` | You can add your own files to add to your queue. The supported file formats are: `mp4` , `mp3`, `flac`, `m4a`, `wav`, `wma`, `aac` | `file`, `place`* | Insert your file into the `file` parameter. `place` works the same as in `/play` |
 | `/skip` | Skips the currently playing song. If a single song is looped, the next song is played and loop is set to loop the entire queue. |||
 | `/loop` | Cycles the loop state in the following order: no looping, looping the entire queue, looping a single song. |||
@@ -136,10 +150,10 @@ Only server Administrators and users with a role named `dj` can execute commands
 | `/back` | Goes to the previous song. If a single song is looped, the next song is played and loop is set to loop the entire queue. |||
 | `/lyrics` | Shows the lyrics of the currently playing song below the command message. |||
 | `/shuffle` | Toggles the shuffling of the list. Songs skipped while shuffled will not appear in the queue after unshuffling. |||
-| `/swap` | Swaps the songs with the specified places in the queue. | `first`, `second` | Places of the songs you want to swap places. `first` does not have to be less than `second`. Both parameters have to be grater than 0. |
+| `/swap` | Swaps the songs with the specified places in the queue. | `first`, `second` | Places of the songs you want to swap places. `first` does not have to be less than `second`. Both parameters have to be greater than 0. |
 | `/pause` | Toggles the pausing of the player. |||
-| `/remove` | Removes the song in the specified place from the queue. | `place` | `place` is the place of the song you want removed from the queue. The parameter has to be grater than 0. |
-| `/goto` | Moves the player to the specified place in the queue. All the skipped songs will still appear in the history. | `place` | `place` is the place of the song you want to go to. The parameter has to be grater than 0. |
+| `/remove` | Removes the song in the specified place from the queue. | `place` | `place` is the place of the song you want removed from the queue. The parameter has to be greater than 0. |
+| `/goto` | Moves the player to the specified place in the queue. All the skipped songs will still appear in the history. | `place` | `place` is the place of the song you want to go to. The parameter has to be greater than 0. |
 | `/create` | Creates a new personal playlist which only you will be able to access. | `playlist` | The parameter describes the name of your new playlist. |
 | `/server-create`** | Creates a new server playlist which everyone on the server will be able to access. | `playlist` | The parameter describes the name of your new playlist. |
 | `/delete` | Deletes the playlist from your list of playlists. | `playlist` | The parameter describes the name of the playlist being deleted. |
@@ -155,4 +169,34 @@ Only server Administrators and users with a role named `dj` can execute commands
 | `/playlist` | Adds your personal playlist to the queue. | `playlist`, `song`\*, `place`\* | `playlist` is the name of the playlist. If `song` is not given, the entire playlist will be added to the queue. If `song` is given, only the selected song will be added to the queue. `place` works the same as in `/play`. |
 | `/server-playlist` | Works the same as `/playlist` but for server playlists. | `playlist`, `song`\*, `place`\* | The parameters work the same as in `/playlist`. |
 
+## The Command Message
 
+The command message should look something like this. It will be located in the `shteffs-disco` text channel which Shteff will create on it's own.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://user-images.githubusercontent.com/104315710/232210368-cddebad3-6807-4ef4-ae83-87159c8f96dd.png">
+  <source media="(prefers-color-scheme: light)" srcset="https://user-images.githubusercontent.com/104315710/232214018-e242afd4-e7be-4fc8-9f03-e9f142d94034.png">
+  <img alt="Screenshot of command message" src="https://user-images.githubusercontent.com/104315710/232214018-e242afd4-e7be-4fc8-9f03-e9f142d94034.png">
+</picture>
+
+The command message consists of three parts:
+1. The queue display
+    - Songs with a negative number have already been played, songs with a positive number are waiting to be played.
+    - The song with number 0 is currently being played.
+    - Songs are played in order, from top to bottom.
+    - The user can modify the order using commands and buttons.
+    - When a command is taking a `place` argument, it is referring to the number next to a queued song. Commands only work with positive values of `place`.
+2. The embed
+     - The embed displays information about the currently playing song.
+     - All information about the song displayed is taken from Spotify. The message may display incorrect information if a song is not available on Spotify.
+     - The track links link to the song on other platforms (for example YouTube).
+     - The author links link to the author profiles on Spotify.
+     - In rare cases, the song being played may not be the same song as the one being displayed in the command message.
+3. The button block
+     - The button block is already described [here](README.md#the-buttons).
+
+# Contributing
+
+# License
+
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE.md) file for details.
