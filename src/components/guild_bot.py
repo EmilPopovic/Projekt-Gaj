@@ -1,3 +1,4 @@
+import discord
 from asyncinit import asyncinit
 from collections import deque
 
@@ -12,7 +13,8 @@ class GuildBot(Player):
     bot = None
     db = None
 
-    default_color = 0xf1c40f
+    default_color_rgb = (194, 149, 76)
+    default_color = discord.Color.from_rgb(*default_color_rgb)
     default_embed = discord.Embed(
         title='Welcome to Shteff!',
         description='Use /play to add more songs to queue.',

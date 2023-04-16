@@ -4,21 +4,25 @@ from .sql_bridge import SqlSong
 
 
 class InteractionResponder:
-    @staticmethod
+    default_color_rgb = (194, 149, 76)
+    default_color = discord.Color.from_rgb(*default_color_rgb)
+
+    @classmethod
     async def send(
-        text: str,
-        interaction: discord.Interaction,
-        followup: bool = False,
-        fail: bool = False,
-        event: bool = False,
-        ephemeral: bool = True
+            cls,
+            text: str,
+            interaction: discord.Interaction,
+            followup: bool = False,
+            fail: bool = False,
+            event: bool = False,
+            ephemeral: bool = True
     ) -> None:
         if fail:
             title = 'Fail'
             color = discord.Color.from_rgb(242, 63, 67)
         elif event:
             title = 'Event'
-            color = discord.Color.from_rgb(240, 178, 50)
+            color = cls.default_color
         else:
             title = 'Success'
             color = discord.Color.from_rgb(33, 155, 85)
@@ -33,10 +37,11 @@ class InteractionResponder:
         else:
             await interaction.response.send_message(content='', embed=embed, ephemeral=ephemeral)
 
-    @staticmethod
+    @classmethod
     async def show_playlists(
-        playlists: list[str],
-        interaction: discord.Interaction
+            cls,
+            playlists: list[str],
+            interaction: discord.Interaction
     ) -> None:
         msg = ''
         for playlist in playlists:
@@ -45,15 +50,16 @@ class InteractionResponder:
         embed = discord.Embed(
             title='Playlists',
             description=msg,
-            color=0xf1c40f
+            color=cls.default_color
         )
         await interaction.response.send_message(content='', embed=embed, ephemeral=True)
 
     @staticmethod
     async def show_songs(
-        songs: list[SqlSong],
-        playlist_name: str,
-        interaction: discord.Interaction
+            cls,
+            songs: list[SqlSong],
+            playlist_name: str,
+            interaction: discord.Interaction
     ) -> None:
         song_names = [song.song_name for song in songs]
         song_authors = [song.author_name for song in songs]
@@ -64,6 +70,6 @@ class InteractionResponder:
         embed = discord.Embed(
             title=playlist_name,
             description=msg,
-            color=0xf1c40f
+            color=cls.default_color
         )
         await interaction.response.send_message(content='', embed=embed, ephemeral=True)

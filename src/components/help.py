@@ -2,6 +2,9 @@ import discord
 
 
 class Help:
+    default_color_rgb = (194, 149, 76)
+    default_color = discord.Color.from_rgb(*default_color_rgb)
+
     slash_commands = [
         ('/help', 'Sends a help message just like this one. How did you get here?'),
         ('/ping', 'Pong! Shows bot latency.'),
@@ -78,7 +81,7 @@ class Help:
         embed = discord.Embed(
             title='The Manual',
             description='Read it. Please.',
-            color=0xf1c40f
+            color=cls.default_color
         )
         embed.add_field(
             name='Slash commands:',
