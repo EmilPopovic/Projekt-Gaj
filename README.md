@@ -259,6 +259,7 @@ Only server Administrators and users with a role named `dj` can execute commands
 | `/playlist` | Adds your personal playlist to the queue. | `playlist`, `song`\*, `place`\* | `playlist` is the name of the playlist. If `song` is not given, the entire playlist will be added to the queue. If `song` is given, only the selected song will be added to the queue. `place` works the same as in `/play`. |
 | `/server-playlist` | Works the same as `/playlist` but for server playlists. | `playlist`, `song`\*, `place`\* | The parameters work the same as in `/playlist`. |
 | `/reset` | Restarts Shteff in a server. This commands is useful if you discovered a breaking bug and don't want to restart the entire bot. After running this command, a new `Player` object is created for the server in which the command was used. This is a debug command and should not be regularly used. |||
+| `/refresh` | If something broke, you can refresh the command message using this command. |||
 
 ## The Command Message
 
