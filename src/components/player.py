@@ -45,6 +45,8 @@ class Player(commands.Cog):
         self.stop_event = threading.Event()
         self.goto_event = threading.Event()
 
+        self.stop_play_music_event = threading.Event()
+
         self.update_message_loop = asyncio.new_event_loop()
 
     async def reset_bot_states(self, reset_vc=True) -> None:
@@ -233,6 +235,8 @@ class Player(commands.Cog):
 
     # @await_update_message
     def start_session(self):
+        self.stop_play_music_event.clear()
+
         self.play_music_thread = threading.Thread(target = self.play_music, args = ())
         self.play_music_thread.start()
 
@@ -249,6 +253,8 @@ class Player(commands.Cog):
         self.is_paused = False
         self.queue = SongQueue()
 
+        self.stop_play_music_event.set()
+
         self.needs_refreshing = True
 
         print(f'{c_event("closed session")} in {c_guild(self.guild.id)}')
@@ -256,6 +262,10 @@ class Player(commands.Cog):
     def play_music(self):
         is_first = True
         while True:
+            if self.stop_play_music_event.is_set():
+                self.stop_play_music_event.clear()
+                return
+
             if self.voice_client is None:
                 raise CommandExecutionError('Bot is not in a voice channel.')
 
