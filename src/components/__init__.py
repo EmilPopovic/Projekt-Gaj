@@ -1,11 +1,12 @@
 from .command_handler import CommandHandler
 from .guild_bot import GuildBot
-from .help_cog import HelpCog
+from .help import Help
 from .list_manager import ListManager
 from .player import Player
 from .song_generator import SongGenerator
 from .command_buttons import CommandButtons
 from .song_queue import SongQueue
+from .list_select_modal import UserListSelectModal, ServerListSelectModal
 
 print(
     """

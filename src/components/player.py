@@ -249,6 +249,8 @@ class Player(commands.Cog):
         self.is_paused = False
         self.queue = SongQueue()
 
+        self.needs_refreshing = True
+
         print(f'{c_event("closed session")} in {c_guild(self.guild.id)}')
 
     def play_music(self):
@@ -273,8 +275,6 @@ class Player(commands.Cog):
 
             song = self.queue.current
 
-            self.needs_refreshing = True
-
             if song is None:
                 self.close_session()
                 return
@@ -284,6 +284,8 @@ class Player(commands.Cog):
             if not song.is_good:
                 self.queue.next()
                 continue
+
+            self.needs_refreshing = True
 
             audio_source = discord.FFmpegPCMAudio(song.source, **self.ffmpeg_options)
             try:

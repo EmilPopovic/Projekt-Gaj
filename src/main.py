@@ -23,13 +23,15 @@ from discord import app_commands
 from discord.ext import commands
 
 from components import (
-    HelpCog,
+    Help,
     CommandHandler,
     GuildBot,
     CommandButtons,
     ListManager,
     SongGenerator,
-    SongQueue
+    SongQueue,
+    UserListSelectModal,
+    ServerListSelectModal
 )
 from utils import (
     Database,
@@ -68,6 +70,8 @@ class MainBot(commands.AutoShardedBot):
         command_handler = CommandHandler(self)
 
         SongQueue.Manager = list_manager
+        UserListSelectModal.manager = list_manager
+        ServerListSelectModal.manager = list_manager
 
         self.Manager = list_manager
         self.Handler = command_handler
@@ -77,9 +81,20 @@ class MainBot(commands.AutoShardedBot):
 
         # SLASH COMMAND CALLBACK FUNCTIONS
 
+        @self.tree.command(name='reset', description='This is a debug command, use it only if you broke something.')
+        async def reset_callback(interaction: discord.Interaction):
+            guild = interaction.guild
+            self.guild_bots[guild.id] = await GuildBot(guild)
+            await Responder.send('Server reset.', interaction)
+
+        @self.tree.command(name='refresh', description='This is a debug command that refreshes the command message.')
+        async def refresh_callback(interation: discord.Interaction):
+            guild_bot = self.get_bot_from_interaction(interation)
+            await guild_bot.update_message()
+
         @self.tree.command(name='help', description='Get help using the bot.')
         async def help_callback(interaction: discord.Interaction):
-            await HelpCog.send_message(interaction)
+            await Help.send_message(interaction)
 
         @self.tree.command(name='ping', description='Pings Shteff.')
         async def ping_callback(interaction: discord.Interaction):
@@ -396,7 +411,7 @@ class MainBot(commands.AutoShardedBot):
                 pass
             else:
                 print(f'{c_event("MOVED")} in {c_guild(guild_id)}')
-                await guild_bot.disconnect(disconnect=False)
+                await guild_bot.disconnect(disconnect=True)
 
         @self.event
         async def on_message(message) -> None:
@@ -445,7 +460,8 @@ class MainBot(commands.AutoShardedBot):
             await asyncio.sleep(1)
 
             for player in self.guild_bots.values():
-                await player.guild_bot.update_message()
+                if player.needs_refreshing:
+                    await player.guild_bot.update_message()
 
     def get_bot_from_interaction(self, interaction: discord.Interaction) -> GuildBot:
         return self.guild_bots[interaction.guild.id]

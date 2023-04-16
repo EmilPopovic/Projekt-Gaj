@@ -1,6 +1,7 @@
 import discord
 
-from utils import BtnStyle
+from .list_select_modal import UserListSelectModal, ServerListSelectModal
+from utils import BtnStyle, InteractionResponder as Responder
 
 
 class CommandButtons(discord.ui.View):
@@ -22,6 +23,7 @@ class CommandButtons(discord.ui.View):
 
     @discord.ui.button(label= '◁', style=BtnStyle.grey, row=0)
     async def previous_btn_callback(self, interaction: discord.Interaction, _: discord.ui.Button):
+        await interaction.response.edit_message(view = self)
         await self.command_handler.previous(interaction, send_response=True)
 
     @discord.ui.button(label= '▉', style=BtnStyle.grey, row=0)
@@ -35,6 +37,7 @@ class CommandButtons(discord.ui.View):
 
     @discord.ui.button(label= '▷', style=BtnStyle.grey, row=0)
     async def skip_btn_callback(self, interaction: discord.Interaction, _: discord.ui.Button):
+        await interaction.response.edit_message(view = self)
         await self.command_handler.skip(interaction, send_response=True)
 
     @discord.ui.button(label= '⭯', style=BtnStyle.grey, row=0)
@@ -54,10 +57,12 @@ class CommandButtons(discord.ui.View):
 
     @discord.ui.button(label= '✖', style=BtnStyle.red, row=1)
     async def clear_btn_callback(self, interaction: discord.Interaction, _: discord.ui.Button):
+        await interaction.response.edit_message(view=self)
         await self.command_handler.clear(interaction, send_response=True)
 
     @discord.ui.button(label= '#', style=BtnStyle.red, row=1)
     async def dc_btn_callback(self, interaction: discord.Interaction, _: discord.ui.Button):
+        await interaction.response.edit_message(view = self)
         await self.command_handler.disconnect(interaction, send_response=True)
 
     @discord.ui.button(label= '≡', style=BtnStyle.grey, row=1)
@@ -68,21 +73,10 @@ class CommandButtons(discord.ui.View):
         button.style = BtnStyle.green if guild_bot.show_lyrics else BtnStyle.grey
         await interaction.response.edit_message(view=self)
 
-    @discord.ui.button(label= '⯆', style=BtnStyle.grey, row=1)
-    async def queue_btn_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
-        success = await self.command_handler.queue(interaction, send_response=False)
-        if not success: return
-        guild_bot = self.bot.get_bot_from_interaction(interaction)
-        button.style = BtnStyle.green if guild_bot.short_queue else BtnStyle.grey
-        await interaction.response.edit_message(view=self)
+    @discord.ui.button(label= '+', style=BtnStyle.blue, row=1)
+    async def add_btn_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(UserListSelectModal())
 
-    @discord.ui.button(label= '⯅', style=BtnStyle.grey, row=1)
-    async def history_btn_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
-        success = await self.command_handler.history(interaction, send_response=False)
-        if not success: return
-        guild_bot = self.bot.get_bot_from_interaction(interaction)
-        button.style = BtnStyle.green if guild_bot.show_history else BtnStyle.grey
-        await interaction.response.edit_message(view=self)
-
-    async def add_to_personal(self, interaction: discord.Interaction, button: discord.ui.Button):
-        pass
+    @discord.ui.button(label= 'S+', style=BtnStyle.blue, row=1)
+    async def server_add_btn_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(ServerListSelectModal())

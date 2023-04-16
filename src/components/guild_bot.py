@@ -221,6 +221,16 @@ class GuildBot(Player):
         await self.lyrics_message.delete()
         self.lyrics_message = None
 
+    @staticmethod
+    async def create_command_channel(guild: discord.Guild) -> discord.TextChannel:
+        channel = await guild.create_text_channel(
+            name = 'shteffs-disco',
+            reason = 'This is the command channel of Shteff.',
+            nsfw = False,
+            topic = 'This is the command channel of Shteff. You can use commands in any channel, but the command message will only be visible here. For more info use /help or consult the GitHub repository by visiting https://github.com/Mjolnir2425/Shteff.'
+        )
+        return channel
+
     @classmethod
     async def get_id(cls, guild: discord.guild.Guild) -> int:
         try:
@@ -236,14 +246,14 @@ class GuildBot(Player):
             # check if channel exists currently
             guild_channels = [channel.id for channel in guild.text_channels]
             if channel_id not in guild_channels:
-                channel = await guild.create_text_channel('shteffs-disco')
+                channel = await cls.create_command_channel(guild)
                 cls.db.update_channel_id(guild.id, channel.id)
                 return channel.id
 
         else:
             # existing channel was not found
             # has to create new channel
-            channel = await guild.create_text_channel('shteffs-disco')
+            channel = await cls.create_command_channel(guild)
             # add new channel to database
             cls.db.add_channel_id(guild.id, channel.id)
             print(f'{c_event("CREATED CHANNEL")} {c_channel(channel.id)}')

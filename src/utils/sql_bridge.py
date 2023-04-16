@@ -248,7 +248,9 @@ class Database:
             PRIMARY KEY(local_id),
             FOREIGN KEY (actual_id) REFERENCES Songs(song_id) ON DELETE CASCADE
             );"""
+        query2 = f"""INSERT INTO PersonalPlaylists (playlist_name, user_id) VALUES ('{playlist_name}', {user_id});"""
         self.execute_query(query)
+        self.execute_query(query2)
 
     def delete_server_playlist(self, guild_id: int, playlist_name: str):
         query1 = f"""DROP TABLE `{playlist_name}_{guild_id}`;"""

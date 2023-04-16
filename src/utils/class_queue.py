@@ -14,4 +14,3 @@ class Queue(deque):
 
     def is_empty(self):
         return len(self) == 0
-    

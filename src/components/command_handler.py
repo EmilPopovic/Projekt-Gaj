@@ -85,7 +85,7 @@ class CommandHandler:
             return
         # if user is in a voice channel with the bot
         try:
-            await Responder.send('Trying to add song(s)', interaction, event=True)
+            # await Responder.send('Trying to add song(s)', interaction, event=True)
             await guild_bot.add(
                 query=song,
                 voice_channel=user_voice_state.channel,
@@ -94,8 +94,10 @@ class CommandHandler:
             )
         except CommandExecutionError as error:
             await Responder.send(error.message, interaction, followup=True, fail=True)
-        # except Exception as _:
-        #     await Responder.send('An undocumented error occurred.', interaction, followup = True, fail = True)
+        except Exception as _:
+            await Responder.send('An undocumented error occurred.', interaction, followup=True, fail=True)
+        else:
+            await Responder.send('Added song(s).', interaction)
 
     async def playlist_play(
             self,

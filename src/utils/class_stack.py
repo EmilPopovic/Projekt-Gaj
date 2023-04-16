@@ -14,4 +14,3 @@ class Stack(deque):
 
     def is_empty(self):
         return len(self) == 0
-    
