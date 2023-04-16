@@ -209,14 +209,14 @@ If you like a song, you can save it to an existing playlist or create a new one.
 The button block is located under the command message and looks like this. You can find what every command means in the list of supported commands below.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://user-images.githubusercontent.com/104315710/232208387-c68179f4-fee6-4315-8067-b0ed83857043.png">
-  <source media="(prefers-color-scheme: light)" srcset="https://user-images.githubusercontent.com/104315710/232213343-60c5c0b8-6c68-43e7-9248-c00a4cba871f.png">
-  <img alt="Screenshot of button block" src="https://user-images.githubusercontent.com/104315710/232213343-60c5c0b8-6c68-43e7-9248-c00a4cba871f.png">
+  <source media="(prefers-color-scheme: dark)" srcset="https://user-images.githubusercontent.com/104315710/232313431-ef71cdfa-ab6d-4f54-ae63-e258c2cdeb04.png">
+  <source media="(prefers-color-scheme: light)" srcset="https://user-images.githubusercontent.com/104315710/232313459-c617f7c0-a994-42f2-9885-45c0b2957667.png">
+  <img alt="Screenshot of button block" src="https://user-images.githubusercontent.com/104315710/232313459-c617f7c0-a994-42f2-9885-45c0b2957667.png">
 </picture>
 
-| Shuffle | Back | Pause | Skip | Loop |
+| Shuffle | Back | Pause | Skip | Cycle loop |
 | :---: | :---: | :---: | :---: | :---: |
-| **Clear** | **Disconnect** | **Lyrics** | **X** | **X** |
+| **Clear** | **Disconnect** | **Toggle lyrics** | **Add to user** | **Add to server playlist** |
 
 ## The Commands
 
@@ -258,15 +258,16 @@ Only server Administrators and users with a role named `dj` can execute commands
 | `/server-manifest` | Lists out all songs on a server playlist. | `playlist` | The name of the playlist. |
 | `/playlist` | Adds your personal playlist to the queue. | `playlist`, `song`\*, `place`\* | `playlist` is the name of the playlist. If `song` is not given, the entire playlist will be added to the queue. If `song` is given, only the selected song will be added to the queue. `place` works the same as in `/play`. |
 | `/server-playlist` | Works the same as `/playlist` but for server playlists. | `playlist`, `song`\*, `place`\* | The parameters work the same as in `/playlist`. |
+| `/reset` | Restarts Shteff in a server. This commands is useful if you discovered a breaking bug and don't want to restart the entire bot. After running this command, a new `Player` object is created for the server in which the command was used. This is a debug command and should not be regularly used. |||
 
 ## The Command Message
 
 The command message should look something like this. It will be located in the `shteffs-disco` text channel which Shteff will create on his own.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://user-images.githubusercontent.com/104315710/232210368-cddebad3-6807-4ef4-ae83-87159c8f96dd.png">
-  <source media="(prefers-color-scheme: light)" srcset="https://user-images.githubusercontent.com/104315710/232214018-e242afd4-e7be-4fc8-9f03-e9f142d94034.png">
-  <img alt="Screenshot of command message" src="https://user-images.githubusercontent.com/104315710/232214018-e242afd4-e7be-4fc8-9f03-e9f142d94034.png">
+  <source media="(prefers-color-scheme: dark)" srcset="https://user-images.githubusercontent.com/104315710/232313619-ee911e19-d017-4f76-b4ba-4de1ca38a165.png">
+  <source media="(prefers-color-scheme: light)" srcset="https://user-images.githubusercontent.com/104315710/232313581-b027e100-a3c3-4175-9774-dd35ddac3e66.png">
+  <img alt="Screenshot of command message" src="https://user-images.githubusercontent.com/104315710/232313581-b027e100-a3c3-4175-9774-dd35ddac3e66.png">
 </picture>
 
 The command message consists of three parts:
