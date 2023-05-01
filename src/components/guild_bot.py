@@ -149,7 +149,10 @@ class GuildBot(Player):
         current = self.queue.current
 
         if self.show_lyrics:
-            lyrics_msg_content = f'**Lyrics:**\n\n{current.lyrics}\n\n'
+            if current.lyrics is None:
+                lyrics_msg_content = f'**Lyrics:**\n\nNo lyrics available for this song.\n\n'
+            else:
+                lyrics_msg_content = f'**Lyrics:**\n\n{current.lyrics}\n\n'
             if self.lyrics_message is None:
                 if len(lyrics_msg_content) > 1800:
                     lyrics_msg_content = lyrics_msg_content[:1800]

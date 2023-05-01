@@ -7,7 +7,7 @@ class GeniusInfo:
     @staticmethod
     def get_lyrics(song_name: str, author_name: str) -> str:
         lyrics_genius = Genius(GENIUS_API_KEY)
-        song_info = lyrics_genius.search_song(author_name, song_name)
+        song_info = lyrics_genius.search_song(artist=author_name, title=song_name)
         lyrics = song_info.lyrics
 
         # remove junk in the beginning
@@ -18,6 +18,10 @@ class GeniusInfo:
         lyrics = after_junk.strip('You might also like50Embed')
 
         # clean text
-        lyrics.replace('`', "'")
+        lyrics = lyrics.replace('`', "'")
+        lyrics = lyrics.replace('"', '')
+
+        if len(lyrics) > 3500:
+            lyrics = None
 
         return lyrics

@@ -293,6 +293,7 @@ class MainBot(commands.AutoShardedBot):
         @server_obliterate_callback.error
         async def no_permission_error(interaction: discord.Interaction, _):
             msg = 'You don\'t seem to be an admin or a dj, so you cant use this command.'
+            msg = f'{_}'
             await Responder.send(msg, interaction, fail=True)
 
         # AUTOCOMPLETE FUNCTIONS
@@ -301,7 +302,7 @@ class MainBot(commands.AutoShardedBot):
         @add_callback.autocomplete(name='playlist')
         @obliterate_callback.autocomplete(name='playlist')
         @manifest_callback.autocomplete(name='playlist')
-        @server_playlist_callback.autocomplete(name='playlist')
+        @playlist_callback.autocomplete(name='playlist')
         async def user_lists_autocomplete(
                 interaction: discord.Interaction,
                 current: str
@@ -333,10 +334,9 @@ class MainBot(commands.AutoShardedBot):
 
         def lists_options(interaction: discord.Interaction, scope: Literal['user', 'server']) -> list[str]:
             try:
-                if scope == 'user':
-                    playlists = self.database.get_user_lists(interaction.user.id)
-                else:
-                    playlists = self.database.get_server_lists(interaction.guild.id)
+                owner_id: int = interaction.user.id if scope == 'user' else interaction.guild.id
+                
+                playlists = self.database.get_lists(owner_id, scope)
             except SqlException:
                 return []
             except ForbiddenQueryError:
@@ -362,16 +362,15 @@ class MainBot(commands.AutoShardedBot):
             """
             playlist_name = interaction.data['options'][0]['value']
             try:
-                if scope == 'user':
-                    songs = self.database.get_songs_from_list(interaction.user.id, playlist_name)
-                else:
-                    songs = self.database.get_songs_from_list(interaction.guild.id, playlist_name)
+                owner_id: int = interaction.user.id if scope == 'user' else interaction.guild.id
+                    
+                songs = self.database.get_songs_from_list(owner_id, playlist_name, scope)
             except SqlException:
                 return []
             except ForbiddenQueryError:
                 return []
             else:
-                return [song.song_name for song in songs]
+                return [song.name for song in songs]
 
         @obliterate_callback.autocomplete(name='song')
         @playlist_callback.autocomplete(name='song')

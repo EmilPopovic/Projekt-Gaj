@@ -1,11 +1,12 @@
 import mysql.connector
 from mysql.connector import Error
+import typing
+from datetime import timedelta
 
 from .colors import *
 from .exceptions import SqlException
-from .sql_song import SqlSong
 from settings import HOST_NAME, USER_NAME, USER_PASSWORD, DB_NAME, PORT_NUMBER
-from components.song_generator import SongGenerator
+from components.song_generator import SongGenerator, Author
 
 
 class Database:
@@ -121,7 +122,7 @@ class Database:
 
         self.execute_query(query)
 
-    def get_server_lists(self, guild_id: int):
+    def get_lists(self, owner_id: int, scope: typing.Literal['user', 'server']):
         """
         Retrieves a list of playlists for a given server.
         Parameters:
@@ -129,25 +130,26 @@ class Database:
         Returns:
             list: A list of playlist names for the specified server.
         """
-        query = f"""SELECT playlist_name FROM ServerPlaylists WHERE guild_id={guild_id};"""
+        query = f"""SELECT playlist_name FROM {scope}playlists WHERE owner_id={owner_id};"""
 
         retval = self.read_query(query)
         lists = [elm[0] for elm in retval]
         return lists
+    
+    def get_color_id(self, song):
+        red = song.color[0]
+        green = song.color[1]
+        blue = song.color[2]
 
-    def get_user_lists(self, user_id: int):
-        """
-        Retrieves a list of personal playlists for a given user.
-        Parameters:
-            user_id (int): The ID of the user to retrieve playlists for.
-        Returns:
-            list: A list of playlist names for the specified user.
-        """
-        query = f"""SELECT playlist_name FROM PersonalPlaylists WHERE user_id={user_id};"""
+        query = f"""SELECT color_id FROM Colors WHERE red={red} AND green={green} AND blue={blue};"""
+        color_id = self.read_query(query)
 
-        retval = self.read_query(query)
-        lists = [elm[0] for elm in retval]
-        return lists
+        if not color_id:
+            query2 = f"""INSERT INTO Colors(red, green, blue) VALUES ({red}, {green}, {blue});"""
+            self.execute_query(query2)
+            color_id = self.read_query(query)
+
+        return color_id[0][0]
 
     def get_song_id(self, song: SongGenerator) -> int:
         """
@@ -158,24 +160,71 @@ class Database:
             int: The ID of the specified song.
         """
         # Check if the song already exists in the database
-        song_name = song.name
-        author_name = song.author.name
-        source = song.source
+        author_id = self.get_author_id(song)
 
-        query1 = f"""SELECT song_id FROM Songs WHERE song_name='{song_name}' AND author_name='{author_name}';"""
+        query1 = f"""SELECT song_id FROM Songs WHERE song_name="{song.name}" AND author_id="{author_id}";"""
         song_id = self.read_query(query1)
 
         # If the song does not exist, add it to the database
         if not song_id:
-            query2 = f"""INSERT INTO Songs(song_name, author_name, song_link) VALUES ('{song_name}', '{author_name}', '{source}');"""
+            color_id = self.get_color_id(song)
+            query2 = f"""INSERT INTO Songs(
+                                        song_name,
+                                        author_id,
+                                        duration_s,
+                                        thumbnail_link,
+                                        spotify_link,
+                                        yt_id,
+                                        yt_link,
+                                        color_id,
+                                        song_link,
+                                        lyrics                                        
+                                        )             
+                                    VALUES(
+                                        "{song.name}", 
+                                        {author_id}, 
+                                        {int(song.duration.total_seconds())}, 
+                                        "{song.thumbnail_link}",
+                                        "{song.spotify_link}",
+                                        "{song.yt_id}",
+                                        "{song.yt_link}",
+                                        {color_id},
+                                        "{song.source}",
+                                        "{song.lyrics}"
+                                        );"""
             self.execute_query(query2)
-            query3 = f"""SELECT song_id FROM Songs WHERE song_name='{song_name}' AND author_name='{author_name}';"""
-            song_id = self.read_query(query3)
+            song_id = self.read_query(query1)
 
         # Return the ID of the song
         return song_id[0][0]
+    
+    def get_author_id(self, song: SongGenerator) -> int:
+        """
+        """
+        query = f"""SELECT author_id FROM Authors WHERE author_name="{song.author.name}" AND author_link='{song.author.url}'; """
+        author_id = self.read_query(query)
 
-    def add_to_server_playlist(self, song: SongGenerator, guild_id: int, playlist_name: str) -> None:
+        if not author_id:
+            query2 = f"""INSERT INTO Authors(author_name, author_link) VALUES("{song.author.name}", '{song.author.url}');"""
+            self.execute_query(query2)
+            author_id = self.read_query(query)
+
+        return author_id[0][0]
+
+    def get_playlist_id(self, owner_id: int, playlist_name: str, scope: typing.Literal['user', 'server']) -> int:
+        """
+        Retrieves the ID of a server playlist from the database.
+        Parameters:
+            playlist_name (str): The name of the playlist to return the ID for.
+        Returns:
+            int: The ID of the specified list.
+        """
+        query1 = f"""SELECT playlist_id FROM {scope}playlists WHERE owner_id='{owner_id}' AND playlist_name ='{playlist_name}';"""
+        playlist_id = self.read_query(query1)
+        
+        return playlist_id[0][0]
+
+    def add_to_playlist(self, song: SongGenerator, owner_id: int, playlist_name: str, scope: typing.Literal['user', 'server']) -> None:
         """
         Adds a song to a server playlist in the database.
         Parameters:
@@ -185,34 +234,23 @@ class Database:
         Returns:
             None
         """
-        # Get the ID of the song from the database
+        # Get the ID of the song and playlist from the database
         song_id = self.get_song_id(song)
-
+        playlist_id = self.get_playlist_id(owner_id, playlist_name, scope)
+        
+        query1 = f"""SELECT MAX(local_id) FROM {scope}playlistssongs WHERE playlist_id={playlist_id};"""
+        local_id = self.read_query(query1)[0][0]
+        if local_id is None:
+            local_id = 0
+        
         # Construct and execute the query to add the song to the playlist
-        query = f"""INSERT INTO `{playlist_name}_{guild_id}`(actual_id) VALUES ({song_id})"""
-        self.execute_query(query)
-
-    def add_to_user_playlist(self, song: SongGenerator, user_id: int, playlist_name: str):
-        """
-        Adds a song to a personal playlist in the database.
-        Parameters:
-            song (Song): The Song object to add to the playlist.
-            user_id (int): The ID of the user the playlist belongs to.
-            playlist_name (str): The name of the playlist to add the song to.
-        Returns:
-            None
-        """
-        # Get the ID of the song from the database
-        song_id = self.get_song_id(song)
-
-        # Construct and execute the query to add the song to the playlist
-        query = f"""INSERT INTO `{playlist_name}_{user_id}`(actual_id) VALUES ({song_id})"""
-        self.execute_query(query)
-
+        query2 = f"""INSERT INTO {scope}playlistssongs(playlist_id, song_id, local_id) VALUES ({playlist_id}, {song_id}, {local_id+1});"""
+        self.execute_query(query2)
+        
         # Print a success message
         print("Song successfully added to playlist.")
 
-    def create_server_playlist(self, guild_id: int, playlist_name: str):
+    def create_playlist(self, owner_id: int, playlist_name: str, scope: typing.Literal['user', 'server']):
         """
         Creates a new server playlist table in the database.
         Parameters:
@@ -222,73 +260,47 @@ class Database:
             None
         """
         # Construct and execute the query to create the new playlist table
-        query = f"""CREATE TABLE `{playlist_name}_{guild_id}`(
-            local_id int NOT NULL auto_increment,
-            actual_id int NOT NULL UNIQUE,
-            PRIMARY KEY(local_id),
-            FOREIGN KEY (actual_id) REFERENCES Songs(song_id) ON DELETE CASCADE
-            );"""
-        query2 = f"""INSERT INTO ServerPlaylists (playlist_name, guild_id) VALUES ('{playlist_name}', {guild_id});"""
+        query = f"""INSERT INTO {scope}playlists (playlist_name, owner_id) VALUES ('{playlist_name}', {owner_id});"""
         self.execute_query(query)
-        self.execute_query(query2)
 
-    def create_user_playlist(self, user_id: int, playlist_name: str):
-        """
-        Creates a new personal playlist table in the database.
-        Parameters:
-            user_id (int): The ID of the user the playlist belongs to.
-            playlist_name (str): The name of the new playlist.
-        Returns:
-            None
-        """
-        # Construct and execute the query to create the new playlist table
-        query = f"""CREATE TABLE `{playlist_name}_{user_id}`(
-            local_id int NOT NULL auto_increment,
-            actual_id int NOT NULL UNIQUE,
-            PRIMARY KEY(local_id),
-            FOREIGN KEY (actual_id) REFERENCES Songs(song_id) ON DELETE CASCADE
-            );"""
-        query2 = f"""INSERT INTO PersonalPlaylists (playlist_name, user_id) VALUES ('{playlist_name}', {user_id});"""
+    def delete_playlist(self, owner_id: int, playlist_name: str, scope: typing.Literal['user', 'server']):
+        query = f"""DELETE FROM {scope}playlists WHERE owner_id={owner_id} AND playlist_name='{playlist_name}';"""
         self.execute_query(query)
-        self.execute_query(query2)
 
-    def delete_server_playlist(self, guild_id: int, playlist_name: str):
-        query1 = f"""DROP TABLE `{playlist_name}_{guild_id}`;"""
-        query2 = f"""DELETE FROM ServerPlaylists WHERE guild_id={guild_id} AND playlist_name='{playlist_name}';"""
+    def remove_from_playlist(self, owner_id: int, playlist_name: str, song_id: int, scope: typing.Literal['user', 'server']):
+        playlist_id = self.get_playlist_id(owner_id, playlist_name, scope)
+        query = f"""DELETE FROM {scope}playlistssongs WHERE playlist_id={playlist_id} AND song_id={song_id};"""
+        self.execute_query(query)
 
-        self.execute_query(query1)
-        self.execute_query(query2)
-
-    def delete_user_playlist(self, user_id: int, playlist_name: str):
-        query1 = f"""DROP TABLE `{playlist_name}_{user_id}`;"""
-        query2 = f"""DELETE FROM PersonalPlaylists WHERE user_id={user_id} AND playlist_name='{playlist_name}';"""
-
-        self.execute_query(query1)
-        self.execute_query(query2)
-
-    def remove_from_user_playlist(self, user_id: int, playlist_name: str, actual_id: int):
-        query1 = f"""DELETE FROM `{playlist_name}_{user_id}` WHERE actual_id={actual_id};"""
-        self.execute_query(query1)
-
-    def remove_from_server_playlist(self, guild_id: int, playlist_name: str, actual_id: int):
-        query1 = f"""DELETE FROM `{playlist_name}_{guild_id}` WHERE actual_id={actual_id};"""
-        self.execute_query(query1)
-
-    def get_songs_from_list(self, discord_id: int, playlist_name: str) -> list[SqlSong]:
-        query = f"""SELECT * FROM `{playlist_name}_{discord_id}`;"""
-        song_pairs = self.read_query(query)
-
-        ret_list: list[SqlSong] = []
-        for song in song_pairs:
-            query2 = f"""SELECT song_id, song_name, author_name, song_link FROM Songs WHERE song_id={song[1]};"""
+    def get_songs_from_list(self, owner_id: int, playlist_name: str, scope: typing.Literal['user', 'server']) -> list[SongGenerator]:
+        playlist_id = self.get_playlist_id(owner_id, playlist_name, scope)
+        query = f"""SELECT song_id FROM {scope}playlistssongs WHERE playlist_id={playlist_id} ORDER BY local_id;"""
+        song_ids = self.read_query(query)
+        ret_list: list[SongGenerator] = []
+        for song in song_ids:
+            query2 = f"""SELECT song_name, author_id, duration_s, thumbnail_link, spotify_link, yt_id, yt_link, color_id, song_link, lyrics FROM Songs WHERE song_id={song[0]};"""
             retval = self.read_query(query2)[0]
-            song_obj: SqlSong = SqlSong(
-                song_id=song[0],
-                global_id=retval[0],
-                song_name=retval[1],
-                author_name=retval[2],
-                source=retval[3]
-            )
+            song_obj: SongGenerator = SongGenerator(query=None, interaction=None)
+            song_obj.name = retval[0]
+            
+            query3 = f"""SELECT author_name, author_link FROM Authors WHERE author_id={retval[1]};"""
+            author_retval = self.read_query(query3)[0]
+            author_name = author_retval[0]
+            author_link = author_retval[1]
+            song_obj.author = Author(author_name, author_link)
+            song_obj.authors = [song_obj.author]
+            
+            song_obj.duration = timedelta(milliseconds=(retval[2]*1000))
+            song_obj.thumbnail_link = retval[3]
+            song_obj.spotify_link = retval[4]
+            song_obj.yt_id = retval[5]
+            song_obj.yt_link = retval[6]
+            
+            query4 = f"""SELECT red, green, blue FROM Colors WHERE color_id={retval[7]};"""
+            color = self.read_query(query4)[0]
+            song_obj.color = (color[0], color[1], color[2])
+            
+            song_obj.source = retval[8]
+            song_obj.lyrics = retval[9]
             ret_list.append(song_obj)
-
         return ret_list

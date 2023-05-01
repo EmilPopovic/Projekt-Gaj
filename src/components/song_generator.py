@@ -6,7 +6,6 @@ from datetime import timedelta
 from threading import Thread
 
 from api import SpotifyInfo, SpotifySong, Author, YouTubeInfo, GeniusInfo
-from utils.sql_song import SqlSong
 from utils import SpotifyExtractError, YTDLError
 
 
@@ -40,7 +39,7 @@ class SongGenerator:
 
     def __init__(
             self,
-            query: str | SpotifySong | SqlSong,
+            query: str | SpotifySong,
             interaction: discord.Interaction,
             set_all: bool = True,
             from_add_to_playlist: bool = False
@@ -106,26 +105,6 @@ class SongGenerator:
             self.set_spotify_secondary(query)
             if from_add_to_playlist:
                 self.set_source()
-
-        elif isinstance(query, SqlSong):
-            self.from_playlist = True
-            self.name = query.song_name
-
-            spotify_info: SpotifySong = SpotifyInfo.spotify_get(f'{self.name} - {query.author_name}')[0]
-
-            self.authors = spotify_info.authors
-            self.author = self.authors[0]
-
-            self.duration = spotify_info.duration
-            self.thumbnail_link = spotify_info.thumbnail_url
-            self.spotify_link = spotify_info.url
-
-            self.source = query.source
-            print(self.source)
-            if self.source is None:
-                self.is_good = False
-
-            self.set_source_color_lyrics()
 
     def set_spotify_info(self, query: str) -> bool | None:
         try:

@@ -5,7 +5,6 @@ import typing
 
 from utils import (
     InteractionResponder as Responder,
-    SqlSong,
     SqlException,
     ForbiddenQueryError,
     c_event,
@@ -76,11 +75,11 @@ class ListManager:
             return
 
         try:
-            list_songs: list[SqlSong]
-            if scope == 'user':
-                list_songs = self.db.get_songs_from_list(interaction.user.id, playlist_name)
-            else:
-                list_songs = self.db.get_songs_from_list(interaction.guild.id, playlist_name)
+            list_songs: list[SongGenerator]
+            owner_id: int = interaction.user.id if scope == 'user' else interaction.guild.id
+                
+            list_songs = self.db.get_songs_from_list(owner_id, playlist_name, scope)
+        
         except SqlException:
             await Responder.send('Database error, try again later.', interaction, fail=True)
             return
@@ -89,20 +88,9 @@ class ListManager:
             return
         else:
             if song_name:
-                list_songs = [song for song in list_songs if song.song_name == song_name]
-
-            song_objs = [None] * len(list_songs)
-            threads = []
-
-            for i, sql_song in enumerate(list_songs):
-                t = threading.Thread(target = self.worker, args = (song_objs, i, sql_song, interaction))
-                threads.append(t)
-                t.start()
-
-            for thread in threads:
-                thread.join()
-
-        return song_objs
+                list_songs = [song for song in list_songs if song.name == song_name]
+            
+        return list_songs
 
     async def list_exists(
             self,
@@ -126,10 +114,10 @@ class ListManager:
         """
         try:
             lists: list[str]
-            if scope == 'user':
-                lists = self.db.get_user_lists(interaction.user.id)
-            else:
-                lists = self.db.get_server_lists(interaction.guild.id)
+            owner_id: int = interaction.user.id if scope == 'user' else interaction.guild.id
+    
+            lists = self.db.get_lists(owner_id, scope)
+        
         except SqlException:
             await Responder.send('Database error, try again later.', interaction, fail=True)
             return None
@@ -174,6 +162,8 @@ class ListManager:
                 return
 
         songs = [song for song in songs if song.is_good]
+        for song in songs:
+            song.set_source_color_lyrics() 
 
         # check if the list we want to add the song to exists
         list_exists: bool | None = await self.list_exists(interaction, playlist_name, scope)
@@ -185,12 +175,10 @@ class ListManager:
 
         # try to add the song to the list
         try:
-            if scope == 'user':
-                for song in songs:
-                    self.db.add_to_user_playlist(song, interaction.user.id, playlist_name)
-            else:
-                for song in songs:
-                    self.db.add_to_server_playlist(song, interaction.guild.id, playlist_name)
+            owner_id: int = interaction.user.id if scope == 'user' else interaction.guild.id
+            for song in songs:
+                self.db.add_to_playlist(song, owner_id, playlist_name, scope)
+        
         except SqlException:
             await Responder.send('Database error, try again later.', interaction, fail=True)
         except ForbiddenQueryError:
@@ -224,10 +212,10 @@ class ListManager:
         # playlist names have to be unique
         try:
             lists: list[str]
-            if scope == 'user':
-                lists = self.db.get_user_lists(interaction.user.id)
-            else:
-                lists = self.db.get_server_lists(interaction.guild.id)
+            owner_id: int = interaction.user.id if scope == 'user' else interaction.guild.id   
+            
+            lists = self.db.get_lists(owner_id, scope)
+        
         except SqlException:
             await Responder.send('Database error, try again later.', interaction, fail=True)
             return
@@ -241,10 +229,10 @@ class ListManager:
                 return
 
         try:
-            if scope == 'user':
-                self.db.create_user_playlist(interaction.user.id, playlist_name)
-            else:
-                self.db.create_server_playlist(interaction.guild.id, playlist_name)
+            owner_id: int = interaction.user.id if scope == 'user' else interaction.guild.id
+            
+            self.db.create_playlist(owner_id, playlist_name, scope)
+        
         except SqlException:
             await Responder.send('Database error, try again later.', interaction, fail=True)
         except ForbiddenQueryError:
@@ -283,10 +271,10 @@ class ListManager:
             return
 
         try:
-            if scope == 'user':
-                self.db.delete_user_playlist(interaction.user.id, playlist_name)
-            else:
-                self.db.delete_server_playlist(interaction.guild.id, playlist_name)
+            owner_id: int = interaction.user.id if scope == 'user' else interaction.guild.id
+
+            self.db.delete_playlist(owner_id, playlist_name, scope)
+        
         except SqlException:
             await Responder.send('Database error, try again later.', interaction, fail=True)
         else:
@@ -321,11 +309,11 @@ class ListManager:
             return
 
         try:
-            list_songs: list[SqlSong]
-            if scope == 'user':
-                list_songs = self.db.get_songs_from_list(interaction.user.id, playlist_name)
-            else:
-                list_songs = self.db.get_songs_from_list(interaction.guild.id, playlist_name)
+            list_songs: list[SongGenerator]
+            owner_id: int = interaction.user.id if scope == 'user' else interaction.guild.id
+                
+            list_songs = self.db.get_songs_from_list(owner_id, playlist_name, scope)
+        
         except SqlException:
             await Responder.send('Database error, try again later', interaction, fail=True)
             return
@@ -333,7 +321,7 @@ class ListManager:
             await Responder.send('Forbidden song name.', interaction, fail=True)
             return
         else:
-            song_names = [song.song_name for song in list_songs]
+            song_names = [song.name for song in list_songs]
             if song_name not in song_names:
                 await Responder.send(
                     f'Song named "{song_name}" not on the playlist "{playlist_name}".', interaction, fail=True
@@ -341,14 +329,13 @@ class ListManager:
                 return
             song_id = 0
             for song in list_songs:
-                if song.song_name == song_name:
-                    song_id = song.global_id
+                if song.name == song_name:
+                    song_id = self.db.get_song_id(song)
 
         try:
-            if scope == 'user':
-                self.db.remove_from_user_playlist(interaction.user.id, playlist_name, song_id)
-            else:
-                self.db.remove_from_server_playlist(interaction.guild.id, playlist_name, song_id)
+            owner_id: int = interaction.user.id if scope == 'user' else interaction.guild.id
+            self.db.remove_from_playlist(owner_id, playlist_name, song_id, scope)
+        
         except SqlException:
             await Responder.send('Database error, try again later.', interaction, fail=True)
         else:
@@ -373,10 +360,10 @@ class ListManager:
         """
         try:
             lists: list[str]
-            if scope == 'user':
-                lists = self.db.get_user_lists(interaction.user.id)
-            else:
-                lists = self.db.get_server_lists(interaction.guild.id)
+            owner_id: int = interaction.user.id if scope == 'user' else interaction.guild.id
+            
+            lists = self.db.get_lists(owner_id, scope)
+        
         except SqlException:
             await Responder.send('Database error, try again later.', interaction, fail=True)
         else:
@@ -414,7 +401,7 @@ class ListManager:
 
         try:
             discord_id: int = interaction.user.id if scope == 'user' else interaction.guild.id
-            playlist_songs: list[SqlSong] = self.db.get_songs_from_list(discord_id, playlist_name)
+            playlist_songs: list[SongGenerator] = self.db.get_songs_from_list(discord_id, playlist_name, scope)
         except SqlException:
             await Responder.send('Database error, try again later.', interaction, fail=True)
         else:

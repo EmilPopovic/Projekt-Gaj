@@ -296,7 +296,7 @@ class Player(commands.Cog):
                 continue
 
             self.needs_refreshing = True
-
+            
             audio_source = discord.FFmpegPCMAudio(song.source, **self.ffmpeg_options)
             try:
                 self.voice_client.play(audio_source)
