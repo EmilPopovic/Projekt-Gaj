@@ -21,6 +21,9 @@ class GuildBot(Player):
         color=default_color
     )
 
+    LYRICS_MESSAGE_CHAR_LIMIT = 1500
+    QUEUE_CHAR_LIMIT = 500
+
     async def _async_init_(self, guild: discord.guild.Guild):
         self.player = super().__init__(self, guild)
         self.guild: discord.guild.Guild = guild
@@ -43,7 +46,7 @@ class GuildBot(Player):
         # clear command channel
         await self.command_channel.purge(limit=10)
         # start a new live message
-        self.command_message = await self.command_channel.send(embed=self.default_embed, view=Buttons())
+        self.command_message = await self.command_channel.send(embed=self.default_embed, view=Buttons(self))
         # update message
         await self.update_message()
 
@@ -65,14 +68,14 @@ class GuildBot(Player):
                 chars += len(output_text)
                 song_lst.append(output_text)
 
-            if chars > 500:
+            if chars > self.QUEUE_CHAR_LIMIT:
                 song_lst.appendleft(f'And {i - len(played)} more...')
                 break
 
         if self.queue.current is None:
             song_lst.append('**0 No song.**')
         else:
-            song_lst.append(self.queue.current.cmd_message_print(0, is_current = True))
+            song_lst.append(self.queue.current.cmd_message_print(0, is_current=True))
 
         upcoming = self.queue.upcoming
         chars = 0
@@ -82,7 +85,7 @@ class GuildBot(Player):
                 chars += len(output_text)
                 song_lst.append(output_text)
 
-            if chars > 500:
+            if chars > self.QUEUE_CHAR_LIMIT:
                 song_lst.append(f'And {len(upcoming) - i - 1} more...')
                 break
 
@@ -99,73 +102,74 @@ class GuildBot(Player):
             color = self.default_color
 
         embed = discord.Embed(
-            title = 'Welcome to Shteff!',
-            description = 'Use /play to add more songs to queue.',
-            color = color
+            title='Welcome to Shteff!',
+            description='Use /play to add more songs to queue.',
+            color=color
         )
 
         if current.from_file:
             embed.add_field(
-                name = 'Currently playing:',
-                value = current.name,
-                inline = False
+                name='Currently playing:',
+                value=current.name,
+                inline=False
             )
 
-            embed.set_footer(text = 'Cannot extract additional info for songs added from a file.')
+            embed.set_footer(text='Cannot extract additional info for songs added from a file.')
 
         else:
             embed.add_field(
-                name = 'Currently playing:',
-                value = current.name,
-                inline = False
+                name='Currently playing:',
+                value=current.name,
+                inline=False
             )
 
             embed.add_field(
-                name = 'Duration:',
-                value = f'{current.timedelta_duration_to_str()}',
-                inline = False
+                name='Duration:',
+                value=f'{current.timedelta_duration_to_str()}',
+                inline=False
             )
 
             embed.add_field(
-                name = 'Track links:',
-                value = f'[Spotify]({current.spotify_link})\n[YouTube]({current.yt_link})',
-                inline = True
+                name='Track links:',
+                value=f'[Spotify]({current.spotify_link})\n[YouTube]({current.yt_link})',
+                inline=True
             )
 
             embed.add_field(
-                name = 'Author links:',
-                value = ''.join(author.print_with_url_format(new_line = True) for author in current.authors),
-                inline = True
+                name='Author links:',
+                value=''.join(author.print_with_url_format(new_line=True) for author in current.authors),
+                inline=True
             )
 
             if current.thumbnail_link is not None:
-                embed.set_thumbnail(url = current.thumbnail_link)
+                embed.set_thumbnail(url=current.thumbnail_link)
 
-            embed.set_footer(text = 'We do not guarantee the accuracy of the data provided.')
+            embed.set_footer(text='We do not guarantee the accuracy of the data provided.')
 
         return embed
 
     async def update_lyrics_message(self) -> None:
         current = self.queue.current
+        limit = self.LYRICS_MESSAGE_CHAR_LIMIT
 
         if self.show_lyrics:
             if current.lyrics is None:
                 lyrics_msg_content = f'**Lyrics:**\n\nNo lyrics available for this song.\n\n'
             else:
                 lyrics_msg_content = f'**Lyrics:**\n\n{current.lyrics}\n\n'
-            if self.lyrics_message is None:
-                if len(lyrics_msg_content) > 1800:
-                    lyrics_msg_content = lyrics_msg_content[:1800]
-                    lyrics_msg_content += '\n*Only the first 2000 characters of the lyrics can be displayed.*'
-                lyrics_msg_content += '\n*Lyrics provided by Genius.*'
 
-                self.lyrics_message = await self.command_channel.send(content = lyrics_msg_content)
+            if len(lyrics_msg_content) > limit:
+                lyrics_msg_content = lyrics_msg_content[:limit]
+                lyrics_msg_content += f'\n*Only the first {limit} characters of the lyrics can be displayed.*'
+            lyrics_msg_content += '\n*Lyrics provided by Genius.*'
+
+            if self.lyrics_message is None:
+                self.lyrics_message = await self.command_channel.send(content=lyrics_msg_content)
             else:
                 try:
-                    await self.lyrics_message.edit(content = lyrics_msg_content)
+                    await self.lyrics_message.edit(content=lyrics_msg_content)
                 except discord.errors.NotFound:
-                    self.lyrics_message = None
-                    await self.update_lyrics_message()
+                    self.lyrics_message = await self.command_channel.send(content=lyrics_msg_content)
 
     async def update_message(self) -> None:
         self.needs_refreshing = False
@@ -187,7 +191,7 @@ class GuildBot(Player):
             await self.command_message.edit(
                 content=content,
                 embed=embed,
-                view=Buttons()
+                view=Buttons(self)
             )
         except discord.errors.NotFound:
             # create a new message if last one was deleted
@@ -229,10 +233,10 @@ class GuildBot(Player):
     @staticmethod
     async def create_command_channel(guild: discord.Guild) -> discord.TextChannel:
         channel = await guild.create_text_channel(
-            name = 'shteffs-disco',
-            reason = 'This is the command channel of Shteff.',
-            nsfw = False,
-            topic = 'This is the command channel of Shteff. You can use commands in any channel, but the command message will only be visible here. For more info use /help or consult the GitHub repository by visiting https://github.com/Mjolnir2425/Shteff.'
+            name='shteffs-disco',
+            reason='This is the command channel of Shteff.',
+            nsfw=False,
+            topic='This is the command channel of Shteff. You can use commands in any channel, but the command message will only be visible here. For more info use /help or consult the GitHub repository by visiting https://github.com/Mjolnir2425/Shteff.'
         )
         return channel
 

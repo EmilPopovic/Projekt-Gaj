@@ -16,6 +16,8 @@ class Player(commands.Cog):
         'options': '-vn'
     }
 
+    PLAYER_INTERVAL = 1
+
     def __init__(
             self,
             guild_bot,
@@ -106,6 +108,8 @@ class Player(commands.Cog):
 
     async def skip(self) -> None:
         async with self.lock:
+            if self.is_paused:
+                await self.pause()
             if self.voice_client is not None:
                 self.voice_client.pause()
             if self.looped_status == 'single':
@@ -147,7 +151,7 @@ class Player(commands.Cog):
         async with self.lock:
             self.close_session()
             if disconnect:
-                asyncio.create_task(self.voice_client.disconnect())
+                await self.voice_client.disconnect()
             await self.reset_bot_states()
             await self.guild_bot.reset()
 
@@ -237,7 +241,7 @@ class Player(commands.Cog):
     def start_session(self):
         self.stop_play_music_event.clear()
 
-        self.play_music_thread = threading.Thread(target = self.play_music, args = ())
+        self.play_music_thread = threading.Thread(target=self.play_music, args=())
         self.play_music_thread.start()
 
         self.is_playing = True
@@ -270,12 +274,12 @@ class Player(commands.Cog):
                 raise CommandExecutionError('Bot is not in a voice channel.')
 
             if self.voice_client.is_playing() or self.is_paused:
-                time.sleep(1)
+                time.sleep(self.PLAYER_INTERVAL)
                 continue
 
             if not self.previous_event.is_set() and not self.goto_event.is_set():
                 if not is_first or self.queue.played:
-                    self.queue.next(force_skip = self.skip_event.is_set())
+                    self.queue.next(force_skip=self.skip_event.is_set())
 
             self.skip_event.clear()
             self.previous_event.clear()
@@ -296,14 +300,14 @@ class Player(commands.Cog):
                 continue
 
             self.needs_refreshing = True
-            
+
             audio_source = discord.FFmpegPCMAudio(song.source, **self.ffmpeg_options)
             try:
                 self.voice_client.play(audio_source)
             except discord.ClientException:
                 continue
 
-            self.playing_thread = threading.Thread(target = self._play_audio_thread(), args = ())
+            self.playing_thread = threading.Thread(target=self._play_audio_thread(), args=())
             self.playing_thread.start()
 
     def stop_play_audio_thread(self):
@@ -315,4 +319,4 @@ class Player(commands.Cog):
         while self.voice_client.is_playing() or self.is_paused:
             if self.stop_event.is_set():
                 break
-            time.sleep(1)
+            time.sleep(self.PLAYER_INTERVAL)

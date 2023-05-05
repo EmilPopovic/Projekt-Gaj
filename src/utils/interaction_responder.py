@@ -6,6 +6,7 @@ from components.song_generator import SongGenerator
 class InteractionResponder:
     default_color_rgb = (194, 149, 76)
     default_color = discord.Color.from_rgb(*default_color_rgb)
+    bot = None
 
     @classmethod
     async def send(
@@ -32,6 +33,7 @@ class InteractionResponder:
             description=text,
             color=color
         )
+
         if followup:
             await interaction.followup.send(content='', embed=embed, ephemeral=ephemeral)
         else:

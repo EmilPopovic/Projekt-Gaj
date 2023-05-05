@@ -1,5 +1,3 @@
-import threading
-
 import discord
 import typing
 
@@ -71,7 +69,12 @@ class ListManager:
         if list_exists is None:
             return
         elif not list_exists:
-            await Responder.send(f'Playlist named "{playlist_name}" does not exist.', interaction, fail=True)
+            await Responder.send(
+                f'Playlist named "{playlist_name}" does not exist.',
+                interaction,
+                fail=True,
+                followup=True
+            )
             return
 
         try:
@@ -154,7 +157,7 @@ class ListManager:
         # get the SongGenerator object of the song we want to add
         songs: list[SongGenerator]
         if query:
-            songs = SongGenerator.get_songs(query, interaction, from_add_to_playlist = True)
+            songs = SongGenerator.get_songs(query, interaction, from_add_to_playlist=True)
         else:
             songs = [self.get_current_song(interaction)]
             if songs[0] is None:
@@ -185,7 +188,7 @@ class ListManager:
             await Responder.send('Forbidden song name.', interaction, fail=True)
         else:
             if len(songs) == 1:
-                await Responder.send(f'Added song to "{playlist_name}".', interaction)
+                await Responder.send(f'Added song to "{playlist_name}".', interaction, followup=True)
             else:
                 await Responder.send(f'Added songs to "{playlist_name}".', interaction)
 
