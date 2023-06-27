@@ -21,6 +21,7 @@ import asyncio
 from typing import Literal
 from discord import app_commands
 from discord.ext import commands
+import threading
 
 from components import (
     Help,
@@ -54,6 +55,8 @@ class MainBot(commands.AutoShardedBot):
     > discord event listeners
     > initialisation code for bot, GuildBots and the database connection
     """
+    INCREMENT_TIME = 1
+    DB_REFRESH_TIME = 7*60*60
 
     def __init__(self, intents=discord.Intents.all()):
         super().__init__(command_prefix='!', intents=intents)
@@ -62,13 +65,7 @@ class MainBot(commands.AutoShardedBot):
 
         self.commands_synced = False
 
-        self.database = database
-
-        GuildBot.db = self.database
-        PermissionsCheck.db = self.database
-        SongGenerator.db = self.database
-
-        list_manager = ListManager(self, database)
+        list_manager = ListManager(self)
         command_handler = CommandHandler(self)
 
         SongQueue.Manager = list_manager
@@ -82,6 +79,12 @@ class MainBot(commands.AutoShardedBot):
         CommandButtons.bot = self
 
         Responder.bot = self
+
+        self.run_timer = 0
+
+        self.database = None
+        db = self.make_db(on_error=sys.exit)
+        self.set_db(db)
 
         # SLASH COMMAND CALLBACK FUNCTIONS
 
@@ -459,15 +462,55 @@ class MainBot(commands.AutoShardedBot):
 
         print(f'{c_login()} as {self.user} with user id: {c_user(self.user.id)}')
 
-        await self.check_for_update_request()
+        await self.start_run_timer()
 
-    async def check_for_update_request(self) -> None:
+    async def start_run_timer(self) -> None:
         while True:
-            await asyncio.sleep(1)
+            await asyncio.sleep(self.INCREMENT_TIME)
 
-            for player in self.guild_bots.values():
-                if player.needs_refreshing:
-                    await player.guild_bot.update_message()
+            # refresh messages
+            self.start_refresh_message_thread()
+
+            # check for database timeout
+            if self.run_timer % self.DB_REFRESH_TIME <= self.INCREMENT_TIME:
+                try:
+                    self.database.refresh_interactive_timeout()
+                except SqlException:
+                    db = self.make_db()
+                    self.set_db(db)
+
+            self.run_timer += self.INCREMENT_TIME
+
+    def start_refresh_message_thread(self):
+        t = threading.Thread(target=self.refresh_message_target, args=())
+        t.start()
+
+    def refresh_message_target(self):
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        for player in self.guild_bots.values():
+            if player.needs_refreshing:
+                loop.run_until_complete(player.guild_bot.update_message())
+
+        loop.close()
+
+    @staticmethod
+    def make_db(on_error=None):
+        try:
+            db = Database()
+        except SqlException:
+            print(f'{c_err()} cannot connect to database.')
+            db = None
+            _ = None if on_error is None else on_error()
+        return db
+
+    def set_db(self, db):
+        self.database = db
+        GuildBot.db = db
+        PermissionsCheck.db = db
+        SongGenerator.db = db
+        ListManager.db = db
 
     def get_bot_from_interaction(self, interaction: discord.Interaction) -> GuildBot:
         return self.guild_bots[interaction.guild.id]
@@ -481,10 +524,5 @@ class MainBot(commands.AutoShardedBot):
 
 if __name__ == '__main__':
     """Main is the beginning of everything."""
-    try:
-        database = Database()
-    except SqlException:
-        database = None
-
     bot = MainBot()
     bot.run(TOKEN)

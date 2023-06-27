@@ -14,9 +14,9 @@ from .song_generator import SongGenerator
 
 
 class ListManager:
-    def __init__(self, main_bot, db):
+    def __init__(self, main_bot):
         self.main_bot = main_bot
-        self.db: Database = db
+        self.db: Database = None
 
     def get_current_song(self, interaction) -> SongGenerator | None:
         """
