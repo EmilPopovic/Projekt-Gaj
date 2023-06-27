@@ -446,9 +446,6 @@ class MainBot(commands.AutoShardedBot):
     async def on_ready(self) -> None:
         """
         Runs on bot login.
-        Syncs slash commands.
-        Creates GuildBot objects for every guild.
-        Starts the listener for message update requests.
         """
         # sync commands
         if not self.commands_synced:
