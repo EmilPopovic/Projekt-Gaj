@@ -432,6 +432,17 @@ class MainBot(commands.AutoShardedBot):
         async def on_guild_join(guild) -> None:
             self.guild_bots[guild.id] = await GuildBot(guild)
 
+    async def sync_commands(self):
+        print(f'{c_event("SYNCING COMMANDS")}')
+
+        try:
+            synced = await self.tree.sync()
+        except Exception as e:
+            print(f'{c_err()} failed to sync command(s)\n{c_event("EXITING")}, Exception:\n{e}')
+            sys.exit()
+
+        print(f'{c_event("SYNCED")} {len(synced)} command(s)')
+
     async def on_ready(self) -> None:
         """
         Runs on bot login.
@@ -440,15 +451,8 @@ class MainBot(commands.AutoShardedBot):
         Starts the listener for message update requests.
         """
         # sync commands
-        try:
-            if not self.commands_synced:
-                print(f'{c_event("SYNCING COMMANDS")}')
-                synced = await self.tree.sync()
-                print(f'{c_event("SYNCED")} {len(synced)} command(s)')
-
-        except Exception as e:
-            print(f'{c_err()} failed to sync command(s)\n{c_event("EXITING")}, Exception:\n{e}')
-            sys.exit()
+        if not self.commands_synced:
+            await self.sync_commands()
 
         self.remove_command('help')
 
