@@ -30,9 +30,16 @@ class Database:
                 database=DB_NAME,
                 port=PORT_NUMBER
             )
-            print(f'{c_event("DATABASE CONNECTED")}')
+            self.execute_query()
+
         except Error as err:
             raise SqlException(str(err))
+
+        print(f'{c_event("DATABASE CONNECTED")}')
+
+    def refresh_interactive_timeout(self):
+        query = f"""SELECT 1;"""
+        self.execute_query(query)
 
     def execute_query(self, query: str) -> None:
         """
@@ -47,6 +54,7 @@ class Database:
         try:
             cursor = self.connection.cursor()
             cursor.execute(query)
+            cursor.close()
             self.connection.commit()
         except Error as err:
             raise SqlException(str(err))
@@ -65,6 +73,7 @@ class Database:
             cursor = self.connection.cursor()
             cursor.execute(query)
             result = cursor.fetchall()
+            cursor.close()
         except Error as err:
             raise SqlException(str(err))
         else:
@@ -122,13 +131,12 @@ class Database:
 
         self.execute_query(query)
 
-    def get_lists(self, owner_id: int, scope: typing.Literal['user', 'server']):
+    def get_lists(self, owner_id: int, scope: typing.Literal['user', 'server']) -> list:
         """
         Retrieves a list of playlists for a given server.
         Parameters:
-            guild_id (int): The ID of the server to retrieve playlists for.
-        Returns:
-            list: A list of playlist names for the specified server.
+            :param owner_id: The ID of the server to retrieve playlists for.
+            :param scope: The scope of the request ('user' or 'server').
         """
         query = f"""SELECT playlist_name FROM {scope}playlists WHERE owner_id={owner_id};"""
 
@@ -229,7 +237,7 @@ class Database:
         Adds a song to a server playlist in the database.
         Parameters:
             song (Song): The Song object to add to the playlist.
-            guild_id (int): The ID of the server the playlist belongs to.
+            owner_id (int): The ID of the server the playlist belongs to.
             playlist_name (str): The name of the playlist to add the song to.
         Returns:
             None
@@ -254,7 +262,7 @@ class Database:
         """
         Creates a new server playlist table in the database.
         Parameters:
-            guild_id (int): The ID of the server the playlist belongs to.
+            owner_id (int): The ID of the server the playlist belongs to.
             playlist_name (str): The name of the new playlist.
         Returns:
             None
