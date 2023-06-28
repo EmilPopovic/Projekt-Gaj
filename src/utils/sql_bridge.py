@@ -30,16 +30,16 @@ class Database:
                 database=DB_NAME,
                 port=PORT_NUMBER
             )
-            self.execute_query()
-
         except Error as err:
             raise SqlException(str(err))
 
         print(f'{c_event("DATABASE CONNECTED")}')
 
+    def __repr__(self):
+        return f'MySQL connection to {DB_NAME} on {HOST_NAME}:{PORT_NUMBER}.'
+
     def refresh_interactive_timeout(self):
-        query = f"""SELECT 1;"""
-        self.execute_query(query)
+        self.connection.reconnect()
 
     def execute_query(self, query: str) -> None:
         """
@@ -54,7 +54,6 @@ class Database:
         try:
             cursor = self.connection.cursor()
             cursor.execute(query)
-            cursor.close()
             self.connection.commit()
         except Error as err:
             raise SqlException(str(err))
@@ -73,7 +72,6 @@ class Database:
             cursor = self.connection.cursor()
             cursor.execute(query)
             result = cursor.fetchall()
-            cursor.close()
         except Error as err:
             raise SqlException(str(err))
         else:

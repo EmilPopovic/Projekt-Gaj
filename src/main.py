@@ -22,6 +22,7 @@ from typing import Literal
 from discord import app_commands
 from discord.ext import commands
 import threading
+from datetime import datetime
 
 from components import (
     Help,
@@ -56,7 +57,7 @@ class MainBot(commands.AutoShardedBot):
     > initialisation code for bot, GuildBots and the database connection
     """
     INCREMENT_TIME = 1
-    DB_REFRESH_TIME = 7*60*60
+    DB_REFRESH_TIME = 600
 
     def __init__(self, intents=discord.Intents.all()):
         super().__init__(command_prefix='!', intents=intents)
@@ -466,13 +467,16 @@ class MainBot(commands.AutoShardedBot):
 
     async def start_run_timer(self) -> None:
         while True:
-            await asyncio.sleep(self.INCREMENT_TIME)
+            start_time = datetime.now()
 
             # refresh messages
-            self.start_refresh_message_thread()
+            for player in self.guild_bots.values():
+                if player.needs_refreshing:
+                    await player.guild_bot.update_message()
 
             # check for database timeout
-            if self.run_timer % self.DB_REFRESH_TIME <= self.INCREMENT_TIME:
+            if self.run_timer % self.DB_REFRESH_TIME < self.INCREMENT_TIME:
+                print(f'{c_event("DB REFRESH")}')
                 try:
                     self.database.refresh_interactive_timeout()
                 except SqlException:
@@ -480,23 +484,14 @@ class MainBot(commands.AutoShardedBot):
                     self.set_db(db)
 
             self.run_timer += self.INCREMENT_TIME
-
-    def start_refresh_message_thread(self):
-        t = threading.Thread(target=self.refresh_message_target, args=())
-        t.start()
-
-    def refresh_message_target(self):
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-
-        for player in self.guild_bots.values():
-            if player.needs_refreshing:
-                loop.run_until_complete(player.guild_bot.update_message())
-
-        loop.close()
+            end_time = datetime.now()
+            delta = end_time - start_time
+            time_to_wait = self.INCREMENT_TIME - delta.seconds
+            await asyncio.sleep(time_to_wait)
 
     @staticmethod
     def make_db(on_error=None):
+        print(f'{c_event("DB RESET")}')
         try:
             db = Database()
         except SqlException:
@@ -510,7 +505,7 @@ class MainBot(commands.AutoShardedBot):
         GuildBot.db = db
         PermissionsCheck.db = db
         SongGenerator.db = db
-        ListManager.db = db
+        self.Manager.db = db
 
     def get_bot_from_interaction(self, interaction: discord.Interaction) -> GuildBot:
         return self.guild_bots[interaction.guild.id]
