@@ -444,6 +444,7 @@ class MainBot(commands.AutoShardedBot):
             print(f'{c_err()} failed to sync command(s)\n{c_event("EXITING")}, Exception:\n{e}')
             sys.exit()
 
+        self.commands_synced = True
         print(f'{c_event("SYNCED")} {len(synced)} command(s)')
 
     async def on_ready(self) -> None:
