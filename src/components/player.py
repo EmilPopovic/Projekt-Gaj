@@ -11,7 +11,7 @@ from utils.colors import c_event, c_guild
 
 
 class Player(commands.Cog):
-    ffmpeg_options = {
+    FFMPEG_OPTIONS = {
         'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
         'options': '-vn'
     }
@@ -190,7 +190,6 @@ class Player(commands.Cog):
 
             await self.guild_bot.update_message()
 
-    # @await_update_message
     async def add(
             self,
             query: str,
@@ -301,7 +300,7 @@ class Player(commands.Cog):
 
             self.needs_refreshing = True
 
-            audio_source = discord.FFmpegPCMAudio(song.source, **self.ffmpeg_options)
+            audio_source = discord.FFmpegPCMAudio(song.source, **self.FFMPEG_OPTIONS)
             try:
                 self.voice_client.play(audio_source)
             except discord.ClientException:
