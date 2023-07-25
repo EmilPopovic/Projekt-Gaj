@@ -42,7 +42,7 @@ from utils import (
     ForbiddenQueryError
 )
 from utils.colors import c_err, c_guild, c_event, c_login, c_user
-from settings import TOKEN
+from settings import TOKEN, COMMANDS, COMMAND_NAMES
 
 
 class MainBot(commands.AutoShardedBot):
@@ -88,71 +88,72 @@ class MainBot(commands.AutoShardedBot):
 
         # SLASH COMMAND CALLBACK FUNCTIONS
 
-        @self.tree.command(name='reset', description='This is a debug command, use it only if you broke something.')
+        @self.tree.command(name='reset', description=COMMANDS['debug']['reset']['short_description'])
         async def reset_callback(interaction: discord.Interaction):
             guild = interaction.guild
             self.guild_bots[guild.id] = await GuildBot(guild)
             await Responder.send('Server reset.', interaction)
 
-        @self.tree.command(name='refresh', description='This is a debug command that refreshes the command message.')
+        @self.tree.command(name='refresh', description=COMMANDS['debug']['refresh']['short_description'])
         async def refresh_callback(interation: discord.Interaction):
             guild_bot = self.get_bot_from_interaction(interation)
             await guild_bot.update_message()
 
-        @self.tree.command(name='help', description='Get help using the bot.')
-        async def help_callback(interaction: discord.Interaction):
-            await Help.send_message(interaction)
+        @self.tree.command(name='help', description=COMMANDS['debug']['help']['short_description'])
+        @app_commands.describe(command='The command you want described.')
+        async def help_callback(interaction: discord.Interaction, command: str = None):
+            await Help.start_help_flow(interaction, command)
 
-        @self.tree.command(name='ping', description='Pings Shteff.')
+        @self.tree.command(name='ping', description=COMMANDS['debug']['ping']['short_description'])
         async def ping_callback(interaction: discord.Interaction):
             latency_ms = round(self.latency * 1000)
             await Responder.send(f'Pong! My latency is {latency_ms} ms.', interaction)
 
-        @self.tree.command(name='join', description='Conjures the bot in your auditory dimension.')
+        @self.tree.command(name='join', description=COMMANDS['player']['join']['short_description'])
         async def join_callback(interaction: discord.Interaction):
             await self.Handler.join(interaction)
 
-        @self.tree.command(name='play', description='Adds a song/list to queue.')
+        @self.tree.command(name='play', description=COMMANDS['player']['play']['short_description'])
         @app_commands.describe(song='The name or link of song/list.', place='Where to insert song.')
         async def play_callback(interaction: discord.Interaction, song: str, place: int = 1):
             await self.Handler.join(interaction, send_response=False)
             await self.Handler.play(interaction, song, place)
 
-        @self.tree.command(name='file-play', description='Add a song from a file to queue.')
+        @self.tree.command(name='file-play', description=COMMANDS['player']['file-play']['short_description'])
         @app_commands.describe(file='Audio file to play.', place='Where to insert song.')
         async def file_play_callback(interaction: discord.Interaction, file: discord.Attachment, place: int = None):
             await self.Handler.join(interaction, send_response=False)
             await self.Handler.file_play(interaction, file, place)
 
-        @self.tree.command(name='skip', description='Skips to the next queued song.')
+        @self.tree.command(name='skip', description=COMMANDS['player']['skip']['short_description'])
         async def skip_callback(interaction: discord.Interaction):
             await self.Handler.skip(interaction)
 
-        @self.tree.command(name='loop', description='Loops queue or single song.')
+        @self.tree.command(name='loop', description=COMMANDS['player']['loop']['short_description'])
         async def loop_callback(interaction: discord.Interaction):
             await self.Handler.loop(interaction)
 
-        @self.tree.command(name='clear', description='Clears queue and history, stops playing.')
+        @self.tree.command(name='clear', description=COMMANDS['player']['clear']['short_description'])
         async def clear_callback(interaction: discord.Interaction):
             await self.Handler.clear(interaction)
 
-        @self.tree.command(name='dc', description='Disconnects bot from voice channel.')
+        @self.tree.command(name='dc', description=COMMANDS['player']['dc']['short_description'])
         async def disconnect_callback(interaction: discord.Interaction):
             await self.Handler.disconnect(interaction)
 
-        @self.tree.command(name='back', description='Skips current song and plays previous.')
+        @self.tree.command(name='back', description=COMMANDS['player']['back']['short_description'])
         async def back_callback(interaction: discord.Interaction):
             await self.Handler.previous(interaction)
 
-        @self.tree.command(name='lyrics', description='Toggles lyrics display (show/hide).')
+        @self.tree.command(name='lyrics', description=COMMANDS['player']['lyrics']['short_description'])
         async def lyrics_callback(interaction: discord.Interaction):
             await self.Handler.lyrics(interaction)
 
-        @self.tree.command(name='shuffle', description='Toggles queue shuffle.')
+        @self.tree.command(name='shuffle', description=COMMANDS['player']['shuffle']['short_description'])
         async def shuffle_callback(interaction: discord.Interaction):
             await self.Handler.shuffle(interaction)
 
-        @self.tree.command(name='swap', description='Swap places of queued songs.')
+        @self.tree.command(name='swap', description=COMMANDS['player']['swap']['short_description'])
         @app_commands.describe(
             first='Position of song you want to swap with second.',
             second='Position of song you want to swap with first.'
@@ -160,43 +161,43 @@ class MainBot(commands.AutoShardedBot):
         async def swap_callback(interaction: discord.Interaction, first: int, second: int):
             await self.Handler.swap(interaction, first, second)
 
-        @self.tree.command(name='pause', description='Pauses or unpauses playing.')
+        @self.tree.command(name='pause', description=COMMANDS['player']['pause']['short_description'])
         async def pause_callback(interaction: discord.Interaction):
             await self.Handler.pause(interaction)
 
-        @self.tree.command(name='remove', description='Removes song with given index from the queue.')
+        @self.tree.command(name='remove', description=COMMANDS['player']['remove']['short_description'])
         @app_commands.describe(place='Position of the song to remove.')
         async def remove_callback(interaction: discord.Interaction, place: int):
             await self.Handler.remove(interaction, place)
 
-        @self.tree.command(name='goto', description='Jumps to the song with given index, removes skipped songs.')
+        @self.tree.command(name='goto', description=COMMANDS['player']['goto']['short_description'])
         @app_commands.describe(place='Position of the song to go to.')
         async def goto_callback(interaction: discord.Interaction, place: int):
             await self.Handler.goto(interaction, place)
 
-        @self.tree.command(name='create', description='Create a personal playlist.')
+        @self.tree.command(name='create', description=COMMANDS['playlist']['create']['short_description'])
         @app_commands.describe(playlist='Name of the playlist.')
         async def create_callback(interaction: discord.Interaction, playlist: str):
             await self.Manager.create_playlist(interaction, playlist, 'user')
 
-        @self.tree.command(name='server-create', description='Create a server playlist.')
+        @self.tree.command(name='server-create', description=COMMANDS['playlist']['server-create']['short_description'])
         @app_commands.describe(playlist='Name of the playlist.')
         @app_commands.check(PermissionsCheck.interaction_has_permissions)
         async def server_create_callback(interaction: discord.Interaction, playlist: str):
             await self.Manager.create_playlist(interaction, playlist, 'server')
 
-        @self.tree.command(name='delete', description='Deletes a personal playlist.')
+        @self.tree.command(name='delete', description=COMMANDS['playlist']['delete']['short_description'])
         @app_commands.describe(playlist='The name of the playlist to delete.')
         async def delete_callback(interaction: discord.Interaction, playlist: str):
             await self.Manager.delete_playlist(interaction, playlist, 'user')
 
-        @self.tree.command(name='server-delete', description='Deletes a server playlist.')
+        @self.tree.command(name='server-delete', description=COMMANDS['playlist']['server-delete']['short_description'])
         @app_commands.describe(playlist='The name of the playlist to delete.')
         @app_commands.check(PermissionsCheck.interaction_has_permissions)
         async def server_delete_callback(interaction: discord.Interaction, playlist: str):
             await self.Manager.delete_playlist(interaction, playlist, 'server')
 
-        @self.tree.command(name='add', description='Add currently playing song to personal playlist.')
+        @self.tree.command(name='add', description=COMMANDS['playlist']['add']['short_description'])
         @app_commands.describe(
             playlist='The playlist the song will be added to.',
             song='The song or third party playlist you want to add to your playlist.'
@@ -205,7 +206,7 @@ class MainBot(commands.AutoShardedBot):
             await interaction.response.defer(ephemeral=True)
             await self.Manager.add_to_playlist(interaction, playlist, song, 'user')
 
-        @self.tree.command(name='server-add', description='Add currently playing song to server playlist.')
+        @self.tree.command(name='server-add', description=COMMANDS['playlist']['server-add']['short_description'])
         @app_commands.describe(
             playlist='The playlist the song will be added to.',
             song='The song or third party playlist you want to add to the server playlist.'
@@ -216,10 +217,7 @@ class MainBot(commands.AutoShardedBot):
                                       song: str = ''):
             await self.Manager.add_to_playlist(interaction, playlist, song, 'server')
 
-        @self.tree.command(
-            name='obliterate',
-            description='Obliterates a song, removing it completely from existence (or the playlist at least).'
-        )
+        @self.tree.command(name='obliterate', description=COMMANDS['playlist']['obliterate']['short_description'])
         @app_commands.describe(
             playlist='The name of the playlist where you want the obliteration to take place.',
             song='The name of the song you want to obliterate.'
@@ -227,10 +225,7 @@ class MainBot(commands.AutoShardedBot):
         async def obliterate_callback(interaction: discord.Interaction, playlist: str, song: str):
             await self.Manager.remove_from_playlist(interaction, playlist, song, 'user')
 
-        @self.tree.command(
-            name='server-obliterate',
-            description='Obliterates a song, removing it completely from existence (or the playlist at least).'
-        )
+        @self.tree.command(name='server-obliterate', description=COMMANDS['playlist']['server-obliterate']['short_description'])
         @app_commands.describe(
             playlist='The name of the playlist where you want the obliteration to take place.',
             song='The name of the song you want to obliterate.'
@@ -239,31 +234,25 @@ class MainBot(commands.AutoShardedBot):
         async def server_obliterate_callback(interaction: discord.Interaction, playlist: str, song: str):
             await self.Manager.remove_from_playlist(interaction, playlist, song, 'server')
 
-        @self.tree.command(name='catalogue', description='Lists out your vast catalogue of playlists.')
+        @self.tree.command(name='catalogue', description=COMMANDS['playlist']['catalogue']['short_description'])
         async def catalogue(interaction: discord.Interaction):
             await self.Manager.show_playlists(interaction, 'user')
 
-        @self.tree.command(name='server-catalogue', description='Lists out your server\'s vast catalogue of playlists.')
+        @self.tree.command(name='server-catalogue', description=COMMANDS['playlist']['server-catalogue']['short_description'])
         async def server_catalogue_callback(interaction: discord.Interaction):
             await self.Manager.show_playlists(interaction, 'server')
 
-        @self.tree.command(
-            name='manifest',
-            description='Forces the songs from your list to take a corporeal form and appear before your eyes.'
-        )
+        @self.tree.command(name='manifest', description=COMMANDS['playlist']['manifest']['short_description'])
         @app_commands.describe(playlist='Name of the playlist.')
         async def manifest_callback(interaction: discord.Interaction, playlist: str):
             await self.Manager.show_playlist_songs(interaction, playlist, 'user')
 
-        @self.tree.command(
-            name='server-manifest',
-            description='Forces the songs from your server list to take a corporeal form and appear before your eyes.'
-        )
+        @self.tree.command(name='server-manifest', description=COMMANDS['playlist']['server-manifest']['short_description'])
         @app_commands.describe(playlist='Name of the playlist.')
         async def server_manifest_callback(interaction: discord.Interaction, playlist: str):
             await self.Manager.show_playlist_songs(interaction, playlist, 'server')
 
-        @self.tree.command(name='playlist', description='Adds songs from selected playlist to the queue.')
+        @self.tree.command(name='playlist', description=COMMANDS['playlist']['playlist']['short_description'])
         @app_commands.describe(
             playlist='The playlist you want to add to the queue.',
             song='The song to play.',
@@ -278,7 +267,7 @@ class MainBot(commands.AutoShardedBot):
             await self.Handler.join(interaction, send_response=False)
             await self.Handler.playlist_play(interaction, song, playlist, 'user', place)
 
-        @self.tree.command(name='server-playlist', description='Adds songs from selected playlist to the queue.')
+        @self.tree.command(name='server-playlist', description=COMMANDS['playlist']['server-playlist']['short_description'])
         @app_commands.describe(
             playlist='The playlist you want to add to the queue.',
             song='The song to play.',
@@ -304,6 +293,15 @@ class MainBot(commands.AutoShardedBot):
             await Responder.send(msg, interaction, fail=True)
 
         # AUTOCOMPLETE FUNCTIONS
+
+        @help_callback.autocomplete(name='command')
+        async def commands_list_autocomplete(
+                _: discord.Interaction,
+                current: str
+        ) -> list[app_commands.Choice]:
+            options: list[str] = COMMAND_NAMES + ['buttons']
+            choices: list[app_commands.Choice] = make_choices(current, options)
+            return choices
 
         @delete_callback.autocomplete(name='playlist')
         @add_callback.autocomplete(name='playlist')

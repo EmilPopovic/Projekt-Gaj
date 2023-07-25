@@ -5,7 +5,7 @@ from io import BytesIO
 from datetime import timedelta
 from threading import Thread
 
-from api import SpotifyInfo, SpotifySong, Author, YouTubeInfo, GeniusInfo
+from api import SpotifyInfo, SpotifySong, Author, YtExtractor, YtSong, GeniusInfo
 from utils import SpotifyExtractError, YTDLError
 
 
@@ -28,7 +28,7 @@ class SongGenerator:
             ]
         elif 'cdn.discordapp.com' in query:
             lst = [SongGenerator(query, interaction, set_all, from_add_to_playlist=from_add_to_playlist)]
-        elif 'www.youtube.com' in query and 'playlist' not in query:
+        elif ('youtube.com' in query or 'youtu.be' in query) and 'playlist' not in query:
             lst = [SongGenerator(query, interaction, from_add_to_playlist=from_add_to_playlist)]
         else:
             lst = [
@@ -71,17 +71,15 @@ class SongGenerator:
         self.from_playlist: bool = False
 
         if isinstance(query, str):
-            if 'www.youtube.com' in query and 'playlist' not in query:
-                print('we are searching for a youtube song')
+            if ('youtube.com' in query or 'youtu.be' in query) and 'playlist' not in query:
+                yt_song = YtExtractor.yt_get(query, url=True)[0]
 
-                yt_info = YouTubeInfo(query, url=True)
-
-                self.source = yt_info.source
-                self.yt_id = yt_info.id
+                self.source = yt_song.source
+                self.yt_id = yt_song.yt_id
                 self.yt_link = f'https://www.youtube.com/watch?v={self.yt_id}'
 
-                yt_author_name = yt_info.author_name
-                yt_title = yt_info.title
+                yt_author_name = yt_song.author_name
+                yt_title = yt_song.title
 
                 self.set_spotify_info(f'{yt_author_name} - {yt_title}')
 
@@ -146,14 +144,14 @@ class SongGenerator:
             return
 
         try:
-            yt_info = YouTubeInfo(f'{self.author.name} {self.name}')
+            yt_song = YtExtractor.yt_get(f'{self.author.name} {self.name}')[0]
         except YTDLError:
             self.is_good = False
             return
 
-        self.source = yt_info.source
-        self.yt_id = yt_info.id
-        self.yt_link = f'https://www.youtube.com/watch?v={self.yt_id}'
+        self.source = yt_song.source
+        self.yt_id = yt_song.id
+        self.yt_link = f'https://youtube.com/watch?v={self.yt_id}'
 
         if self.source is None:
             self.is_good = False
