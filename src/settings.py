@@ -2,6 +2,9 @@ import os
 from dotenv import load_dotenv
 
 
+VERSION = 'v1.4.7.4-dev'
+
+
 # command types, commands and descriptions
 
 COMMANDS = {
