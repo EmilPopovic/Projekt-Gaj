@@ -147,7 +147,6 @@ cmds1, cmds2, cmds3 = list(COMMANDS['player'].keys()), list(COMMANDS['playlist']
 COMMAND_NAMES: list[str] = cmds1 + cmds2 + cmds3
 
 
-
 load_dotenv()
 
 # discord

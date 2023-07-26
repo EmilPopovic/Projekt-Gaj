@@ -24,6 +24,7 @@ class Help:
         'I tried to make lemonade, but I accidentally squeezed the lemons so hard they filed for workers\' compensation.',
         'I told my GPS I was feeling lost, and it replied, \'You think you\'re lost? You should see how confused I get on roundabouts!\'',
         'I wore my shirt inside out all day, and when someone pointed it out, I told them I was just \'testing their attention to detail.\'',
+        'Yes, these were written by ChatGPT... Except for the photosynthesis one.',
     ]
 
     button_commands = [
@@ -76,22 +77,44 @@ class Help:
 
     @classmethod
     async def with_command(cls, interaction, command):
-        description = ''
+        command_info = {}
         for command_type in COMMANDS.keys():
             try:
-                description = COMMANDS[command_type][command]
+                command_info = COMMANDS[command_type][command]
             except KeyError:
                 continue
 
-        embed = discord.Embed(
-            title=f'`{command}`',
-            description=description,
-            color=cls.default_color
-        )
+            embed = discord.Embed(
+                title=f'`{command}`',
+                description=command_info.get('short_description', 'An error occurred, cannot find command.'),
+                color=cls.default_color
+            )
 
-        embed.set_footer(text=choice(cls.responses))
+            try:
+                long_description = command_info['long_description']
+            except KeyError:
+                pass
+            else:
+                embed.add_field(
+                    name='Details',
+                    value=long_description,
+                    inline=False
+                )
 
-        await interaction.response.send_message(content='', embed=embed, ephemeral=True)
+            try:
+                known_issues = command_info['known_issues']
+            except KeyError:
+                pass
+            else:
+                embed.add_field(
+                    name='Known issues',
+                    value=known_issues,
+                    inline=False
+                )
+
+            embed.set_footer(text=choice(cls.responses))
+
+            await interaction.response.send_message(content='', embed=embed, ephemeral=True)
 
     @classmethod
     async def missing_command(cls, interaction, command):
@@ -109,7 +132,7 @@ class Help:
     async def start_help_flow(cls, interaction: discord.Interaction, command: str):
         if command is None:
             await cls.no_command(interaction)
-        elif command == 'buttons' or command in COMMANDS:
+        elif command == 'buttons' or command in COMMAND_NAMES:
             await cls.with_command(interaction, command)
         else:
             await cls.missing_command(interaction, command)
