@@ -203,6 +203,7 @@ class MainBot(commands.AutoShardedBot):
             song='The song or third party playlist you want to add to your playlist.'
         )
         async def add_callback(interaction: discord.Interaction, playlist: str, song: str = ''):
+            # noinspection PyUnresolvedReferences
             await interaction.response.defer(ephemeral=True)
             await self.Manager.add_to_playlist(interaction, playlist, song, 'user')
 
@@ -447,6 +448,10 @@ class MainBot(commands.AutoShardedBot):
         """
         Runs on bot login.
         """
+        # set activity status
+        activity = discord.Activity(type=discord.ActivityType.watching, name='/help')
+        await self.change_presence(activity=activity)
+
         # sync commands
         if not self.commands_synced:
             await self.sync_commands()

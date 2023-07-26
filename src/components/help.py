@@ -1,5 +1,5 @@
 import discord
-from settings import COMMANDS, COMMAND_NAMES
+from settings import COMMANDS, COMMAND_NAMES, VERSION
 from random import choice
 
 
@@ -54,7 +54,7 @@ class Help:
     async def no_command(cls, interaction):
         embed = discord.Embed(
             title='Welcome to Shteff',
-            description='This is the fucking manual. Read it. Please.\nTo get info about a specific command use `/help <command-name>`',
+            description=f'This is the fucking manual. Read it. Please.\nTo get info about a specific command use `/help <command-name>`\nRunning version {VERSION}.',
             color=cls.default_color
         )
 
