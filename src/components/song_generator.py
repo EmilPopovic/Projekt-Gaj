@@ -150,7 +150,7 @@ class SongGenerator:
             return
 
         self.source = yt_song.source
-        self.yt_id = yt_song.id
+        self.yt_id = yt_song.yt_id
         self.yt_link = f'https://youtube.com/watch?v={self.yt_id}'
 
         if self.source is None:
