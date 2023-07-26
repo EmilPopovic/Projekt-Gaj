@@ -1,5 +1,5 @@
 import discord
-from .settings import COMMANDS, COMMAND_NAMES
+from settings import COMMANDS, COMMAND_NAMES
 from random import choice
 
 

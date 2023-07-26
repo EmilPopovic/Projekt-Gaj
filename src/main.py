@@ -212,9 +212,7 @@ class MainBot(commands.AutoShardedBot):
             song='The song or third party playlist you want to add to the server playlist.'
         )
         @app_commands.check(PermissionsCheck.interaction_has_permissions)
-        async def server_add_callback(interaction: discord.Interaction,
-                                      playlist: str,
-                                      song: str = ''):
+        async def server_add_callback(interaction: discord.Interaction, playlist: str, song: str = ''):
             await self.Manager.add_to_playlist(interaction, playlist, song, 'server')
 
         @self.tree.command(name='obliterate', description=COMMANDS['playlist']['obliterate']['short_description'])
@@ -329,6 +327,26 @@ class MainBot(commands.AutoShardedBot):
             choices: list[app_commands.Choice] = make_choices(current, options)
             return choices
 
+        @obliterate_callback.autocomplete(name='song')
+        @playlist_callback.autocomplete(name='song')
+        async def user_list_songs_autocomplete(
+                interaction: discord.Interaction,
+                current: str
+        ) -> list[app_commands.Choice]:
+            options: list[str] = list_songs_options(interaction, 'user')
+            choices: list[app_commands.Choice] = make_choices(current, options)
+            return choices
+
+        @server_obliterate_callback.autocomplete(name='song')
+        @server_playlist_callback.autocomplete(name='song')
+        async def server_list_songs_autocomplete(
+                interaction: discord.Interaction,
+                current: str
+        ) -> list[app_commands.Choice]:
+            options: list[str] = list_songs_options(interaction, 'server')
+            choices: list[app_commands.Choice] = make_choices(current, options)
+            return choices
+
         def make_choices(current: str, choices: list[str]) -> list[app_commands.Choice]:
             lst = []
             for choice in choices:
@@ -376,26 +394,6 @@ class MainBot(commands.AutoShardedBot):
                 return []
             else:
                 return [song.name for song in songs]
-
-        @obliterate_callback.autocomplete(name='song')
-        @playlist_callback.autocomplete(name='song')
-        async def user_list_songs_autocomplete(
-                interaction: discord.Interaction,
-                current: str
-        ) -> list[app_commands.Choice]:
-            options: list[str] = list_songs_options(interaction, 'user')
-            choices: list[app_commands.Choice] = make_choices(current, options)
-            return choices
-
-        @server_obliterate_callback.autocomplete(name='song')
-        @server_playlist_callback.autocomplete(name='song')
-        async def server_list_songs_autocomplete(
-                interaction: discord.Interaction,
-                current: str
-        ) -> list[app_commands.Choice]:
-            options: list[str] = list_songs_options(interaction, 'server')
-            choices: list[app_commands.Choice] = make_choices(current, options)
-            return choices
 
         # BOT LISTENERS
 
