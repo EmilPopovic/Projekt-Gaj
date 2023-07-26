@@ -211,7 +211,7 @@ The button block is located under the command message and looks like this. You c
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://user-images.githubusercontent.com/104315710/232313431-ef71cdfa-ab6d-4f54-ae63-e258c2cdeb04.png">
   <source media="(prefers-color-scheme: light)" srcset="https://user-images.githubusercontent.com/104315710/232313459-c617f7c0-a994-42f2-9885-45c0b2957667.png">
-  <img alt="Screenshot of button block" src="https://user-images.githubusercontent.com/104315710/232313459-c617f7c0-a994-42f2-9885-45c0b2957667.png">
+  <img alt="Screenshot of button block" src="https://user-images.githubusercontent.com/104315710/232313431-ef71cdfa-ab6d-4f54-ae63-e258c2cdeb04.png">
 </picture>
 
 | Shuffle | Back | Pause | Skip | Cycle loop |
@@ -268,7 +268,7 @@ The command message should look something like this. It will be located in the `
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://user-images.githubusercontent.com/104315710/232313619-ee911e19-d017-4f76-b4ba-4de1ca38a165.png">
   <source media="(prefers-color-scheme: light)" srcset="https://user-images.githubusercontent.com/104315710/232313581-b027e100-a3c3-4175-9774-dd35ddac3e66.png">
-  <img alt="Screenshot of command message" src="https://user-images.githubusercontent.com/104315710/232313581-b027e100-a3c3-4175-9774-dd35ddac3e66.png">
+  <img alt="Screenshot of command message" src="https://user-images.githubusercontent.com/104315710/232313619-ee911e19-d017-4f76-b4ba-4de1ca38a165.png">
 </picture>
 
 The command message consists of three parts:
