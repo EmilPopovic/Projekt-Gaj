@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 
 
-VERSION = 'v1.4.8.-beta'
+VERSION = 'v1.4.8-beta'
 
 
 # command types, commands and descriptions
